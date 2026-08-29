@@ -10,12 +10,12 @@ If a file disagrees with this page, **this page wins**. Dated `PROGRESS-*` / old
 | Box | Hetzner `167.233.60.62` `/opt/xpr-music` (`xpr-music.service`) |
 | Git | **private** https://github.com/Gabe-1776/xpr-music |
 | Branch for the box | **`main`** — hashes in `PRODUCTION-PIN.md` |
-| Chain | XPR **testnet** `ondastream` `code_hash` `5f60a2ee…` |
-| `pullbal` | `listener, songId, token` — **no** `playedSec` |
+| Chain | XPR **testnet** `ondastream` `code_hash` `86bb9d28…` |
+| `pullbal` | `listener, songId, token, playedSec` |
 | Flags | `payments_enabled: false` · `mainnet_maintenance: true` |
-| Money | keeper `xprmusic` bills a **flat 2s** per successful pull (artists underpaid when ticks drop) |
+| Money | keeper `xprmusic` bills **playedSec** (capped) via `pullbal` |
 
-**Unpublished:** branch `wip/elapsed-charge` (`playedSec`). Not on the box, not on chain. Do **not** rsync that keeper onto live without setcode of the matching wasm in the same cutover.
+**Elapsed-charge is live** on testnet (wasm `86bb9d28…` + keeper with `playedSec`).
 
 ## Do not
 
@@ -23,7 +23,7 @@ If a file disagrees with this page, **this page wins**. Dated `PROGRESS-*` / old
 - flip `payments_enabled` or `mainnet_maintenance`
 - rsync `catalog/` or `keeper.env`
 - treat Mac leftover `.bak` / `.wip-elapsed-charge` as production
-- review `assembly/target/` wasm on disk as on-chain (live hash is `5f60a2ee`, not `86bb9d28`)
+- review a wasm that is not `86bb9d28…` as on-chain
 
 ## Verify this is the live tree
 
@@ -37,7 +37,7 @@ curl -s https://test.proton.eosusa.io/v1/chain/get_code_hash \
 cd app && npm run test:meter
 ```
 
-Expected pulse sha256: `7d96be2019d3e7af121cb779c7d73552bd4a8d9aced05570c36022b4e93ae885`
+Expected pulse sha256: `f0db60ea6c04af1413c1629881a484a3a4d9ddfd5f94ba60f840eb66bde03d82`
 
 ## Docs map
 
