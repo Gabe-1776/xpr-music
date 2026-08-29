@@ -114,7 +114,7 @@ ok("deposit sets a per-tick cap", bal && Number(bal.maxPerTick) === rate * windo
    `maxPerTick=${bal?.maxPerTick} (rate ${rate} x ${windowSec}s x 8)`);
 
 const artistBefore = await balOf(ARTIST);
-await send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active", { listener: LISTENER, songId: SONG, token: XPR })]);
+await send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active", { listener: LISTENER, songId: SONG, token: XPR, playedSec: 2 })]);
 await sleep(3500);
 const artistAfter = await balOf(ARTIST);
 const due = rate * windowSec;
@@ -134,7 +134,7 @@ await send(asListener(), [act(NAME, "setcap", LISTENER, "active",
   { listener: LISTENER, token: XPR, maxPerTick: 1 })]);
 await sleep(3000);
 await mustThrow("cap BLOCKS an over-large tick",
-  () => send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active", { listener: LISTENER, songId: SONG, token: XPR })]),
+  () => send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active", { listener: LISTENER, songId: SONG, token: XPR, playedSec: 2 })]),
   /tick over cap/i);
 await send(asListener(), [act(NAME, "setcap", LISTENER, "active",
   { listener: LISTENER, token: XPR, maxPerTick: rate * windowSec * 8 })]);
@@ -142,8 +142,27 @@ await sleep(3000);
 
 await mustThrow("unpriced token is refused",
   () => send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active",
-    { listener: LISTENER, songId: SONG, token: { contract: "xtokens", sym: "4,FOOBAR" } })]),
+    { listener: LISTENER, songId: SONG, token: { contract: "xtokens", sym: "4,FOOBAR" }, playedSec: 2 })]),
   /token not payable/i);
+
+// Catch-up: after a gap the pull must bill the elapsed seconds, not one window.
+// Sleep past two windows, then claim them and check the artist got BOTH.
+{
+  const artistBefore = await balOf(ARTIST);
+  await sleep(9000);
+  await send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active",
+    { listener: LISTENER, songId: SONG, token: XPR, playedSec: 8 })]);
+  await sleep(3000);
+  const paid = Math.round(((await balOf(ARTIST)) - artistBefore) * 1e4);
+  ok("catch-up bills elapsed seconds, not one window", paid === rate * 8,
+     `paid=${paid} want=${rate * 8}`);
+}
+
+// The keeper must not be able to bill more time than the clock allows.
+await mustThrow("over-claimed playedSec is clamped, never billed in full",
+  () => send(asKeeper(), [act(NAME, "pullbal", KEEPER, "active",
+    { listener: LISTENER, songId: SONG, token: XPR, playedSec: 9999 })]),
+  /fuse/i);
 
 const before = await balOf(LISTENER);
 await send(asListener(), [act(NAME, "withdraw", LISTENER, "active", { listener: LISTENER, token: XPR })]);

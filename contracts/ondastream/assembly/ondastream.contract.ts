@@ -39,6 +39,25 @@ const MAX_GRANT_SECONDS: u32 = 15552000; // 180 days
 // bounds a top-up the same way `maxPerTick` bounds a grant. 8x leaves room for
 // honest price moves before a stream is interrupted.
 const CAP_MULTIPLIER: u64 = 8;
+// Most seconds one pullbal may bill. The keeper's 2s tick is dropped whenever a
+// send overruns it (contended RPC budget), so a pull can legitimately land ~20s
+// after the last one; without catch-up the artist is paid for 2s of the 20 and
+// silently loses the rest. Catch-up is bounded because a leaked keeper key can
+// call pullbal at will: this is the per-call exposure. The HOURLY ceiling is
+// unchanged -- `billable <= now - lastPull` telescopes, so no more than ~3600s
+// can be billed per hour however often the action is called.
+//
+// The cap interaction is a KNIFE EDGE, not headroom: a deposit's `maxPerTick`
+// is stamped as `rate_at_deposit * windowSec * CAP_MULTIPLIER` = 16 * rate_dep,
+// while a full catch-up costs 16 * rate_now. Equal only while the rate has not
+// moved -- so ANY upward reprice makes a full catch-up breach the cap, and
+// because a failed pull does not clear the debt the resulting stall is sticky.
+// What keeps that safe is the KEEPER: capAdmits() in onda-pulse.js clamps
+// playedSec to what the stamped cap admits, leaving `tick over cap` to mean
+// what it was designed to mean -- a genuinely stale cap. Raising this constant
+// without raising CAP_MULTIPLIER does not widen catch-up; it only moves where
+// the keeper must clamp.
+const MAX_CATCHUP_SEC: u32 = 16;
 const DEFAULT_BUFFER: u32 = 30;
 const MAX_SONG_ID: i32 = 64;
 // Q1 (audit): claims scan claimed primaries; every visited row burns WASM CPU
@@ -495,8 +514,19 @@ export class OndaStream extends Contract {
    * no re-sign. The deposit (transfer with memo `onda`) is the only signature
    * until the credits run out.
    */
+  /**
+   * `playedSec` is how many seconds of ACTUAL playback the keeper is claiming
+   * since the last pull. The contract cannot derive it -- only the server knows
+   * whether the listener was playing or paused -- so it is supplied, and then
+   * clamped three ways so supplying it is not a licence to over-bill:
+   *   - never more than the wall clock has advanced since `lastPull`
+   *   - never more than MAX_CATCHUP_SEC in one call
+   *   - never less than one window (dust pulls are refused outright)
+   * A keeper that under-reports only cheats itself; one that over-reports is
+   * cut back to the clock.
+   */
   @action("pullbal")
-  pullbal(listener: Name, songId: string, token: ExtendedSymbol): void {
+  pullbal(listener: Name, songId: string, token: ExtendedSymbol, playedSec: u32): void {
     const ops = this.ops.getOrNull();
     check(ops != null && ops.keeper.N != 0, "keeper unset");
     requireAuth(ops!.keeper);
@@ -508,12 +538,21 @@ export class OndaStream extends Contract {
 
     const now = <u32>currentTimeSec();
     const p = this.pulls.get(listener.N);
-    if (p != null) check(now >= p.lastPull + cfg.windowSec, "fuse");
+    let billable: u32 = playedSec;
+    if (p != null) {
+      check(now >= p.lastPull + cfg.windowSec, "fuse");
+      // The clock is the ceiling: whatever the keeper claims, it can never bill
+      // for more time than has actually passed since it last pulled.
+      const wall: u32 = now - p.lastPull;
+      if (billable > wall) billable = wall;
+    }
+    if (billable > MAX_CATCHUP_SEC) billable = MAX_CATCHUP_SEC;
+    check(billable >= cfg.windowSec, "below window");
 
     const song = this.requireSong(songId);
     check(song.active, "song not active");
 
-    const due: u64 = rate * <u64>cfg.windowSec;
+    const due: u64 = rate * <u64>billable;
     check(due > 0, "zero due");
     // A deposit is only exposed to the rate it was made under (plus headroom).
     // Fail loudly rather than treating an unset cap as "unlimited" — a silent
@@ -693,6 +732,9 @@ export class OndaStream extends Contract {
     const symRaw = token.sym.raw();
     const row = this.balances.get(tokenKey(listener, token.contract, symRaw));
     check(row != null, "no onda balance");
+    // 0 is not "no cap" here, it is "every pull fails `cap unset`" -- a listener
+    // could silently brick their own stream and have no way to see why.
+    check(maxPerTick > 0, "cap must be positive");
     row!.maxPerTick = maxPerTick;
     this.balances.update(row!, this.receiver);
   }
@@ -726,18 +768,26 @@ export class OndaStream extends Contract {
     if (this.firstReceiver == this.receiver) return;
 
     const token = this.firstReceiver;
-    if (this.rateOf(token, quantity.symbol.raw()) == 0) return;
     if (quantity.amount <= 0) return;
+    // The payability gate USED to live here as a bare `return`, which stranded
+    // a deposit sent in an unpriced token exactly like the paused case above.
+    // It now lives inside each memo branch as a `check`, so an intended deposit
+    // of an unpayable token reverts and the sender keeps their money, while an
+    // unrelated transfer (any other memo) is still ignored rather than blocked.
 
     if (memo == MEMO_PARK) {
       const cfg = this.config.getOrNull();
-      if (cfg == null || cfg.paused) return;
+      // `return` here would let the transfer COMMIT while crediting nothing:
+      // the tokens land in this contract with no `balances` row, and `withdraw`
+      // reads only `balances`, so they are unrecoverable without a setcode.
+      // Fail the whole transfer instead, the way the `s:` branch already does.
+      check(cfg != null && !cfg!.paused, "deposits paused");
       const symRaw = quantity.symbol.raw();
-      const rate = this.rateOf(token, symRaw);
+      const rate = this.requireRate(token, symRaw);
       this.creditBalance(from, token, <u64>quantity.amount, symRaw);
       // The cap is set from the price when the money went in, so a later
       // repricing cannot outrun what the depositor effectively agreed to.
-      this.bumpCap(from, token, symRaw, rate * <u64>cfg.windowSec * CAP_MULTIPLIER);
+      this.bumpCap(from, token, symRaw, rate * <u64>cfg!.windowSec * CAP_MULTIPLIER);
       return;
     }
 
