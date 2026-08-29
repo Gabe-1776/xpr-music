@@ -1,5 +1,7 @@
 # Production pin — music.project-testing.xyz
 
+**Start here for humans/agents:** [`AGENTS.md`](./AGENTS.md).
+
 **Pinned:** 2026-08-29 (Grok Build)  
 **Git:** private `https://github.com/Gabe-1776/xpr-music` — `main` = this pin (`363e0eb`); `wip/elapsed-charge` unpublished  
 **Host:** Hetzner `167.233.60.62` `/opt/xpr-music` (`xpr-music.service`)  

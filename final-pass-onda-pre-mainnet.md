@@ -7,9 +7,9 @@
 **This security pass:** grok-build / xai  
 **Invert:** yes vs Claude-authored contract money path (picker preferred invert for *this* report if treated as Grok-authored: openai / Vulcan-Review / Claude)  
 **Independent SHIP gate owner:** **UNASSIGNED** — must not be grok-build; Fable-class or other non-author family  
-**Branch / commit:** **no git repo** — tree is not a checkout; cannot pin a ship artifact  
+**Branch / commit:** private `Gabe-1776/xpr-music` **`main`** = live pin (see `PRODUCTION-PIN.md` / `AGENTS.md`). `wip/elapsed-charge` is unpublished.  
 **Deploy target:** testnet `ondastream` + `https://music.project-testing.xyz` (Hetzner `167.233.60.62:/opt/xpr-music`). **Not mainnet.**  
-**Live vs local (measured 2026-08-29):** app `server.js`/`auth.js`/`desktop.html` **hash-match** Hetzner. Live keeper `onda-pulse.js` and on-chain wasm `5f60a2ee…` are **behind** Mac source (elapsed-charge `playedSec` not deployed). See findings §0.  
+**Live vs local:** **aligned 2026-08-29** — `main` app hashes match Hetzner. On-chain wasm still `5f60a2ee…` (no `playedSec`). Findings file §0 has the live-vs-local table.  
 **ASVS-ish target:** **L2 (money/auth default)**  
 **Changelog:** [final-pass-onda-pre-mainnet.CHANGELOG.md](./final-pass-onda-pre-mainnet.CHANGELOG.md)  
 **Reviews dir:** `.reviews/2026-08-29-onda-pre-mainnet/`  

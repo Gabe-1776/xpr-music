@@ -14,7 +14,7 @@ Do **not** setcode mainnet. `mainnet_maintenance` stays true.
 
 ## Tokens
 
-XPR (`eosio.token`, 4) and XUSDC (`xtokens`, 6) only. Memo `deposit` is **ignored** (Metal X DEX footgun). Park memo is **`onda`**.
+Payable set is the on-chain `tokrates` table (not this paragraph). Testnet has had XPR, XUSDC, METAL, XMD, LOAN — **read the table**. Memo `deposit` is **ignored** (Metal X DEX footgun). Park memo is **`onda`**. Live pin: repo `PRODUCTION-PIN.md`.
 
 ## Actions
 

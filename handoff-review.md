@@ -1,21 +1,23 @@
 # Handoff review — xpr-music
 
 **Status:** open  
-**Project path:** /Users/felix/Developer/xpr-music
+**Project path:** /Users/felix/Developer/xpr-music  
 **Started:** 2026-08-19  
-**Last stage:** 2s rolling hold+rebate meter (Grok 2026-08-19)
+**Last stage:** live pin + private git (Grok 2026-08-29)
 
 ## Current truth (one screen — keep updated)
 
-- **What this is:** Onda local testnet music app; simulated streaming paywall
-- **Done means:** 2s hold/vest/rebate matches tests; `payments_enabled` still false
+- **What this is:** Onda testnet player at **https://music.project-testing.xyz**. Start **`AGENTS.md`**.
+- **Git:** private `https://github.com/Gabe-1776/xpr-music` — **`main` = live**. `wip/elapsed-charge` not deployed.
+- **Chain:** `ondastream` `code_hash` `5f60a2ee…`, flat 2s `pullbal` (no `playedSec`)
+- **Done means:** checkout `main` hashes match Hetzner (`PRODUCTION-PIN.md`); `payments_enabled` still false; no mainnet
 - **Last agent / seat:** Grok Build
 - **Author family:** xai
-- **Authoritative reviewer family:** anthropic or minimax (invert — not Grok)
+- **Authoritative reviewer family:** openai or anthropic (invert — not Grok-only)
 - **Invert:** yes
-- **Verify command:** `cd ~/Developer/xpr-music/app && npm run test:meter`
-- **Do not touch until Gabriel decides:** flipping `payments_enabled`; mainnet setcode / `mainnet_maintenance`  
-- **On-chain testnet (2026-08-23):** `ondastream` pay modes LIVE; Gabriel tests after UI; then maybe mainnet
+- **Verify command:** `cd ~/Developer/xpr-music/app && npm run test:meter` · sha256 `onda-pulse.js` = `7d96be20…`
+- **Do not touch until Gabriel decides:** `payments_enabled`; mainnet setcode / `mainnet_maintenance`; deploying `wip/elapsed-charge`
+- **Open security:** IDOR `scopeFor`, unauth `/media`, keeper env key + songId redirect, contract keys not frozen — `.reviews/2026-08-29-onda-pre-mainnet/`
 
 ## Goals / purpose (source of truth)
 

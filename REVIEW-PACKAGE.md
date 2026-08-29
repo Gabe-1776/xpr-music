@@ -1,7 +1,9 @@
 # XPR-Music (Ondastream) — Human Review Package
 
+> **Historical (2026-08-26).** Not the live pin. Current: `AGENTS.md` + `PRODUCTION-PIN.md`. Git exists: private `Gabe-1776/xpr-music`. S1–S4/S6 in this file were applied to live; S5/S7 and later findings are in `.reviews/2026-08-29-onda-pre-mainnet/`.
+
 Prepared 2026-08-26 by machine audit (security pass + quality pass), for human reviewer sign-off.
-Scope: whole project. Status: **testnet only** (`music.project-testing.xyz`, chain `71ee83b…`). Not a git checkout yet — root `.gitignore` added in preparation.
+Scope: whole project. Status: **testnet only** (`music.project-testing.xyz`, chain `71ee83b…`).
 
 ---
 
