@@ -1,0 +1,78 @@
+[
+  {
+    "id": "a893fd2a-c845-40e6-a66e-eaa345c5bdba",
+    "name": "Debut EP",
+    "owner": "felixpaw",
+    "created_at": "2026-08-16T04:50:01.511Z"
+  },
+  {
+    "id": "b9a51d7c-3f4e-4c0a-9d21-0c6f5a2e18bb",
+    "name": "Basement Gospel",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/basement-gospel.jpg",
+    "created_at": "2026-08-20T00:00:00.000Z"
+  },
+  {
+    "id": "c7e1f3a2-5b4d-4c9e-b0f2-11a3d8e6c5aa",
+    "name": "The Long Way Home",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/all-i-need-tonight.jpg",
+    "created_at": "2026-08-21T00:00:00.000Z"
+  },
+  {
+    "id": "9d2c4f7a-1b3e-4d5a-8c6f-0f1e2d3c4b5a",
+    "name": "Down the River",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/the-long-road.jpg",
+    "created_at": "2026-08-21T00:00:00.000Z"
+  },
+  {
+    "id": "3f8a1c2e-7b4d-4e6f-9a0b-5c2d1e8f4a9b",
+    "name": "Electric Hearts",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/electric-hearts.jpg",
+    "created_at": "2026-08-21T00:00:00.000Z"
+  },
+  {
+    "id": "7a2b9c4d-1e3f-5a7b-9c1d-3e5f7a9b1c3d",
+    "name": "Scars & Starlight",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/scars-starlight.jpg",
+    "created_at": "2026-08-21T00:00:00.000Z"
+  },
+  {
+    "id": "4d8e5b1c-9a2f-4e7c-b3d6-0c1a8e5f2b7d",
+    "name": "Static Season",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/even-wounds-bloom.jpg",
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "1f7a4b9c-6d2e-4a8f-b5c1-9e3d7f0a2b8c",
+    "name": "Empty Threats",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/empty-threats.jpg",
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "5c2f8e3a-4b6d-4a9c-b7e1-0f3d8a5c1e9b",
+    "name": "Noche de Roca",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/noche-de-roca.jpg",
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "7e4d2a9c-1f8b-4c6e-b3d7-0a1e5c9f2d7b",
+    "name": "Amanecer",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/amanecer.jpg",
+    "created_at": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "0d9f7b3a-8c2e-4a6f-b5d8-1f0e9c4a7b2d",
+    "name": "Velvet Sessions",
+    "owner": "felixpaw",
+    "cover": "/web/assets/covers/velvet-sessions.jpg",
+    "created_at": "2026-08-22T00:00:00.000Z"
+  }
+]

@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#15151a" />
+  <title>Now Playing — XPR Music</title>
+  <style>
+    :root {
+      --bg: #15151a;
+      --surface: rgba(255,255,255,.085);
+      --surface-strong: rgba(255,255,255,.13);
+      --text: #fbfafc;
+      --muted: #aaa7b2;
+      --dim: #77737f;
+      --accent: #cf9bff;
+      --accent-strong: #e0bfff;
+      --green: #81e7b0;
+      --track: rgba(255,255,255,.19);
+      --shadow: 0 22px 60px rgba(0,0,0,.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100%;
+      background: #101014;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+        "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body {
+      min-height: 100svh;
+      overflow-x: hidden;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-shell {
+      position: relative;
+      width: min(100%, 430px);
+      min-height: 100svh;
+      margin: 0 auto;
+      overflow: hidden;
+      isolation: isolate;
+      background:
+        radial-gradient(ellipse 90% 38% at 50% 24%, rgba(109, 66, 119, .25), transparent 72%),
+        linear-gradient(180deg, #222029 0%, var(--bg) 46%, #141419 100%);
+    }
+
+    .app-shell::before {
+      content: "";
+      position: absolute;
+      z-index: -2;
+      inset: -18% -18% 48%;
+      background:
+        radial-gradient(circle at 25% 35%, rgba(232, 112, 153, .22), transparent 32%),
+        radial-gradient(circle at 78% 20%, rgba(75, 122, 221, .2), transparent 34%),
+        radial-gradient(circle at 50% 76%, rgba(194, 94, 238, .2), transparent 35%);
+      filter: blur(48px);
+      opacity: .85;
+      transform: scale(1.15);
+    }
+
+    .app-shell::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(0,0,0,.12), transparent 31%, rgba(0,0,0,.15));
+    }
+
+    .topbar {
+      height: 66px;
+      display: grid;
+      grid-template-columns: 46px 1fr 46px;
+      align-items: center;
+      padding: max(10px, env(safe-area-inset-top)) 18px 0;
+    }
+
+    .topbar-title {
+      text-align: center;
+      color: rgba(255,255,255,.78);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      background: transparent;
+      color: rgba(255,255,255,.9);
+      transition: background .2s ease, transform .2s ease;
+    }
+
+    .icon-button:hover,
+    .icon-button:focus-visible {
+      background: rgba(255,255,255,.1);
+      outline: none;
+    }
+
+    .icon-button:active {
+      transform: scale(.92);
+    }
+
+    .art-wrap {
+      position: relative;
+      width: min(calc(100% - 48px), 354px);
+      aspect-ratio: 1;
+      margin: 11px auto 0;
+      border-radius: 20px;
+      box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.07);
+    }
+
+    .album-art {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: inherit;
+      background: #422c58;
+    }
+
+    .album-art::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(132deg, rgba(255,255,255,.15), transparent 26%),
+        radial-gradient(ellipse at 50% 40%, transparent 0 28%, rgba(15,8,27,.26) 61%, rgba(5,4,12,.7) 100%),
+        linear-gradient(140deg, #f09f91 0%, #9b52a7 33%, #304177 67%, #13182e 100%);
+      mix-blend-mode: screen;
+      opacity: .7;
+      z-index: 1;
+    }
+
+    .album-art::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background: linear-gradient(145deg, transparent 48%, rgba(4,3,11,.35) 49% 52%, transparent 53%);
+      opacity: .7;
+    }
+
+    .art-orbit {
+      position: absolute;
+      z-index: 3;
+      width: 76%;
+      height: 34%;
+      top: 31%;
+      left: 11%;
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 50%;
+      transform: rotate(-29deg);
+      box-shadow: 0 0 22px rgba(255,215,231,.27);
+    }
+
+    .art-orbit::before,
+    .art-orbit::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 0 12px rgba(255,255,255,.8);
+    }
+
+    .art-orbit::before {
+      width: 8px;
+      height: 8px;
+      top: -4px;
+      left: 22%;
+    }
+
+    .art-orbit::after {
+      width: 5px;
+      height: 5px;
+      right: 14%;
+      bottom: 5px;
+    }
+
+    .art-sun {
+      position: absolute;
+      z-index: 2;
+      width: 37%;
+      aspect-ratio: 1;
+      top: 23%;
+      left: 31%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 32%, #ffd6cf 0 7%, #f28fa8 28%, #c14f9e 54%, #57397e 77%, transparent 78%);
+      box-shadow: 0 0 58px rgba(245,112,168,.45);
+    }
+
+    .art-silhouette {
+      position: absolute;
+      z-index: 4;
+      width: 39%;
+      height: 53%;
+      left: 31%;
+      bottom: -4%;
+      border-radius: 46% 48% 13% 12% / 34% 35% 10% 10%;
+      background: linear-gradient(115deg, #16152a 0%, #272049 45%, #100f1d 100%);
+      box-shadow: -23px -13px 35px rgba(20,8,40,.3);
+      transform: rotate(4deg);
+    }
+
+    .art-silhouette::before {
+      content: "";
+      position: absolute;
+      width: 52%;
+      aspect-ratio: 1;
+      top: -22%;
+      left: 22%;
+      border-radius: 50%;
+      background: #19172e;
+    }
+
+    .art-silhouette::after {
+      content: "";
+      position: absolute;
+      width: 135%;
+      height: 8px;
+      top: 37%;
+      left: -19%;
+      border-radius: 50%;
+      background: rgba(224,191,255,.3);
+      filter: blur(5px);
+      transform: rotate(-14deg);
+    }
+
+    .art-label {
+      position: absolute;
+      z-index: 5;
+      left: 19px;
+      bottom: 17px;
+      color: rgba(255,255,255,.8);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .track-info {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 24px 24px 0;
+    }
+
+    .track-copy {
+      min-width: 0;
+    }
+
+    .track-title {
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      font-size: clamp(25px, 7vw, 31px);
+      font-weight: 750;
+      letter-spacing: -.045em;
+      line-height: 1.08;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .track-artist {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -.01em;
+    }
+
+    .nft-note {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 11px;
+      color: rgba(218,197,230,.72);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .nft-note svg {
+      color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .save-button {
+      width: 44px;
+      height: 44px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      margin-top: 1px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 50%;
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      transition: background .2s ease, transform .2s ease, color .2s ease;
+    }
+
+    .save-button.saved {
+      color: var(--accent-strong);
+      background: rgba(207,155,255,.15);
+    }
+
+    .save-button:active {
+      transform: scale(.91);
+    }
+
+    .progress-section {
+      margin: 25px 24px 0;
+    }
+
+    .range-wrap {
+      position: relative;
+      height: 17px;
+      display: flex;
+      align-items: center;
+    }
+
+    .range-track,
+    .range-fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 4px;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .range-track {
+      background: var(--track);
+    }
+
+    .range-fill {
+      right: auto;
+      width: 38.4%;
+      background: linear-gradient(90deg, var(--accent), #efc9ff);
+      box-shadow: 0 0 10px rgba(207,155,255,.32);
+    }
+
+    #seek {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 24px;
+      margin: 0;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    #seek::-webkit-slider-runnable-track {
+      height: 4px;
+      background: transparent;
+    }
+
+    #seek::-webkit-slider-thumb {
+      width: 13px;
+      height: 13px;
+      margin-top: -4px;
+      appearance: none;
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 5px rgba(0,0,0,.4);
+    }
+
+    #seek::-moz-range-track {
+      height: 4px;
+      background: transparent;
+    }
+
+    #seek::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      color: var(--dim);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 16px 27px 0;
+    }
+
+    .control {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: transparent;
+      color: rgba(255,255,255,.91);
+      transition: color .2s ease, transform .2s ease, background .2s ease;
+    }
+
+    .control.small {
+      color: rgba(255,255,255,.68);
+    }
+
+    .control.active {
+      color: var(--accent-strong);
+    }
+
+    .control:hover,
+    .control:focus-visible {
+      background: rgba(255,255,255,.08);
+      outline: none;
+    }
+
+    .control:active {
+      transform: scale(.88);
+    }
+
+    .play-button {
+      width: 62px;
+      height: 62px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff;
+      color: #1c1921;
+      box-shadow: 0 7px 23px rgba(0,0,0,.3);
+      transition: transform .2s ease, background .2s ease;
+    }
+
+    .play-button:hover,
+    .play-button:focus-visible {
+      background: #f4e9ff;
+      outline: none;
+    }
+
+    .play-button:active {
+      transform: scale(.9);
+    }
+
+    .payment-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 54px;
+      margin: 22px 24px 0;
+      padding: 10px 12px;
+      overflow: hidden;
+      border: 1px solid rgba(129,231,176,.18);
+      border-radius: 15px;
+      background: linear-gradient(100deg, rgba(76,127,105,.18), rgba(255,255,255,.045));
+    }
+
+    .payment-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(110deg, transparent 18%, rgba(255,255,255,.08) 48%, transparent 74%);
+      transform: translateX(-100%);
+      animation: shimmer 3.8s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 55% { transform: translateX(-100%); }
+      85%, 100% { transform: translateX(100%); }
+    }
+
+    .live-orb {
+      position: relative;
+      width: 27px;
+      height: 27px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(129,231,176,.14);
+    }
+
+    .live-orb::before,
+    .live-orb::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border: 1px solid rgba(129,231,176,.55);
+      border-radius: inherit;
+      animation: pulse 1.8s ease-out infinite;
+    }
+
+    .live-orb::after {
+      animation-delay: .9s;
+    }
+
+    @keyframes pulse {
+      0% { opacity: .8; transform: scale(.55); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 9px rgba(129,231,176,.85);
+      animation: dot 1.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes dot {
+      from { opacity: .55; transform: scale(.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .payment-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .payment-label {
+      color: rgba(255,255,255,.76);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .payment-amount {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      margin-top: 3px;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.01em;
+    }
+
+    .payment-amount strong {
+      color: #e6fff0;
+      font-weight: 700;
+    }
+
+    .payment-amount span {
+      color: rgba(190,232,208,.62);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .payment-rate {
+      flex: 0 0 auto;
+      align-self: center;
+      color: rgba(190,232,208,.64);
+      font-size: 9px;
+      font-weight: 600;
+      line-height: 1.35;
+      text-align: right;
+    }
+
+    .payment-rate strong {
+      display: block;
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .queue {
+      margin: 21px 24px max(23px, env(safe-area-inset-bottom));
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.09);
+    }
+
+    .queue-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 11px;
+    }
+
+    .queue-heading h2 {
+      margin: 0;
+      color: rgba(255,255,255,.68);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .queue-heading button {
+      padding: 3px 0;
+      background: transparent;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .next-track {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 50px;
+    }
+
+    .next-art {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #efb55e, #ab426c 48%, #28275c);
+    }
+
+    .next-art::before {
+      content: "";
+      position: absolute;
+      width: 35px;
+      height: 35px;
+      left: 6px;
+      top: 5px;
+      border: 5px solid rgba(255,231,164,.76);
+      border-radius: 50%;
+      box-shadow: 0 0 0 5px rgba(241,148,93,.6);
+    }
+
+    .next-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .next-title {
+      overflow: hidden;
+      color: rgba(255,255,255,.86);
+      font-size: 13px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .next-artist {
+      margin-top: 4px;
+      color: var(--dim);
+      font-size: 11px;
+    }
+
+    .next-time {
+      color: var(--dim);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-height: 750px) {
+      .topbar { height: 57px; }
+      .art-wrap { width: min(calc(100% - 48px), 280px); margin-top: 5px; }
+      .track-info { margin-top: 17px; }
+      .progress-section { margin-top: 17px; }
+      .controls { margin-top: 10px; }
+      .payment-card { margin-top: 14px; }
+      .queue { margin-top: 14px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell" aria-label="Now Playing">
+    <header class="topbar">
+      <button class="icon-button" id="collapseButton" aria-label="Collapse player" title="Collapse player">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m5 9 7 7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="topbar-title">Now Playing</div>
+      <button class="icon-button" aria-label="More options" title="More options">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.4" fill="currentColor"/>
+          <circle cx="12" cy="12" r="1.4" fill="currentColor"/>
+          <circle cx="19" cy="12" r="1.4" fill="currentColor"/>
+        </svg>
+      </button>
+    </header>
+
+    <section class="art-wrap" aria-label="Album artwork">
+      <div class="album-art">
+        <div class="art-sun"></div>
+        <div class="art-orbit"></div>
+        <div class="art-silhouette"></div>
+        <div class="art-label">Afterlight · 04</div>
+      </div>
+    </section>
+
+    <section class="track-info" aria-labelledby="songTitle">
+      <div class="track-copy">
+        <h1 class="track-title" id="songTitle">Afterlight</h1>
+        <p class="track-artist">Nova Vale</p>
+        <div class="nft-note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3.2 19 7v10l-7 3.8L5 17V7l7-3.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="m8.5 9.5 3.5-1.9 3.5 1.9v5L12 16.4 8.5 14.5v-5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+          Creator-owned NFT
+        </div>
+      </div>
+      <button class="save-button" id="saveButton" aria-label="Add Afterlight to playlist" title="Add to playlist">
+        <svg id="saveIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 20.2 4.8 13a4.65 4.65 0 0 1 6.58-6.58L12 7.04l.62-.62A4.65 4.65 0 0 1 19.2 13L12 20.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </section>
+
+    <section class="progress-section" aria-label="Song progress">
+      <div class="range-wrap">
+        <div class="range-track"></div>
+        <div class="range-fill" id="rangeFill"></div>
+        <input id="seek" type="range" min="0" max="100" value="38.4" step=".1" aria-label="Seek through song" />
+      </div>
+      <div class="time-row">
+        <span id="elapsed">1:42</span>
+        <span id="remaining">−2:43</span>
+      </div>
+    </section>
+
+    <nav class="controls" aria-label="Playback controls">
+      <button class="control small" id="shuffleButton" aria-label="Shuffle off" title="Shuffle">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h1.8c3.9 0 5.4 9.8 10.4 9.8H20M16.3 7H20m0 0-2.8-2.8M20 7l-2.8 2.8M4 17h1.8c1.3 0 2.3-1 3.2-2.3M13 9.3c1-1.4 1.8-2.3 3.2-2.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <button class="control" aria-label="Previous track" title="Previous track">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6.2 5.2a1 1 0 0 1 1.5.86v11.88a1 1 0 0 1-1.5.86l-1.9-1.1a1 1 0 0 1-.5-.86V7.16a1 1 0 0 1 .5-.86l1.9-1.1Z"/>
+          <path d="m19.4 6.28-7.86 4.78a1.1 1.1 0 0 0 0 1.88l7.86 4.78a1.1 1.1 0 0 0 1.67-.94V7.22a1.1 1.1 0 0 0-1.67-.94Z"/>
+        </svg>
+      </button>
+
+      <button class="play-button" id="playButton" aria-label="Pause" title="Pause">
+        <svg id="playIcon" width="25" height="25" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <rect x="6.5" y="5" width="3.7" height="14" rx="1.2"/>
+          <rect x="13.8" y="5" width="3.7" height="14" rx="1.2"/>
+        </svg>
+      </button>
+
+      <button class="control" aria-label="Next track" title="Next track">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.8 5.2a1 1 0 0 0-1.5.86v11.88a1 1 0 0 0 1.5.86l1.9-1.1a1 1 0 0 0 .5-.86V7.16a1 1 0 0 0-.5-.86l-1.9-1.1Z"/>
+          <path d="m4.6 6.28 7.86 4.78a1.1 1.1 0 0 1 0 1.88L4.6 17.72a1.1 1.1 0 0 1-1.67-.94V7.22a1.1 1.1 0 0 1 1.67-.94Z"/>
+        </svg>
+      </button>
+
+      <button class="control small" id="repeatButton" aria-label="Repeat off" title="Repeat">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 7h10l-2.5-2.5M17 17H7l2.5 2.5M17 7a4 4 0 0 1 4 4m-14 6a4 4 0 0 1-4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </nav>
+
+    <section class="payment-card" aria-live="polite" aria-label="Live streaming payment">
+      <div class="live-orb" aria-hidden="true"><div class="live-dot"></div></div>
+      <div class="payment-copy">
+        <div class="payment-label">Streaming live to Nova Vale</div>
+        <div class="payment-amount">
+          <strong id="paymentAmount">0.1842</strong>
+          <span>XPR earned</span>
+        </div>
+      </div>
+      <div class="payment-rate">
+        <strong>+0.0007 XPR</strong>
+        <span>per second</span>
+      </div>
+    </section>
+
+    <section class="queue" aria-label="Up next">
+      <div class="queue-heading">
+        <h2>Up next</h2>
+        <button type="button">View queue</button>
+      </div>
+      <div class="next-track">
+        <div class="next-art" aria-hidden="true"></div>
+        <div class="next-copy">
+          <div class="next-title">Soft Focus</div>
+          <div class="next-artist">Mira Sol</div>
+        </div>
+        <div class="next-time">3:58</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const duration = 265;
+      let position = 102;
+      let playing = true;
+      let earned = 0.1842;
+
+      const seek = document.getElementById("seek");
+      const rangeFill = document.getElementById("rangeFill");
+      const elapsed = document.getElementById("elapsed");
+      const remaining = document.getElementById("remaining");
+      const paymentAmount = document.getElementById("paymentAmount");
+      const playButton = document.getElementById("playButton");
+      const playIcon = document.getElementById("playIcon");
+      const saveButton = document.getElementById("saveButton");
+      const saveIcon = document.getElementById("saveIcon");
+      const shuffleButton = document.getElementById("shuffleButton");
+      const repeatButton = document.getElementById("repeatButton");
+
+      const formatTime = seconds => {
+        const value = Math.max(0, Math.round(seconds));
+        return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
+      };
+
+      const render = () => {
+        const percent = Math.min(100, (position / duration) * 100);
+        seek.value = percent;
+        rangeFill.style.width = `${percent}%`;
+        elapsed.textContent = formatTime(position);
+        remaining.textContent = `−${formatTime(duration - position)}`;
+        paymentAmount.textContent = earned.toFixed(4);
+      };
+
+      const setPlaying = value => {
+        playing = value;
+        playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+        playButton.title = playing ? "Pause" : "Play";
+        playIcon.innerHTML = playing
+          ? '<rect x="6.5" y="5" width="3.7" height="14" rx="1.2"/><rect x="13.8" y="5" width="3.7" height="14" rx="1.2"/>'
+          : '<path d="M8.2 5.8a1 1 0 0 1 1.55-.83l7.72 5.2a1 1 0 0 1 0 1.66l-7.72 5.2a1 1 0 0 1-1.55-.83V5.8Z"/>';
+      };
+
+      seek.addEventListener("input", () => {
+        position = (Number(seek.value) / 100) * duration;
+        render();
+      });
+
+      playButton.addEventListener("click", () => setPlaying(!playing));
+
+      saveButton.addEventListener("click", () => {
+        const saved = saveButton.classList.toggle("saved");
+        saveButton.setAttribute("aria-label", saved ? "Remove Afterlight from playlist" : "Add Afterlight to playlist");
+        saveIcon.innerHTML = saved
+          ? '<path d="M12 20.2 4.8 13a4.65 4.65 0 0 1 6.58-6.58L12 7.04l.62-.62A4.65 4.65 0 0 1 19.2 13L12 20.2Z" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>'
+          : '<path d="M12 20.2 4.8 13a4.65 4.65 0 0 1 6.58-6.58L12 7.04l.62-.62A4.65 4.65 0 0 1 19.2 13L12 20.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>';
+      });
+
+      const toggleMode = button => {
+        const active = button.classList.toggle("active");
+        button.setAttribute("aria-pressed", active);
+        button.setAttribute("aria-label", active ? "Turn off" : "Turn on");
+      };
+
+      shuffleButton.addEventListener("click", () => toggleMode(shuffleButton));
+      repeatButton.addEventListener("click", () => toggleMode(repeatButton));
+
+      setInterval(() => {
+        if (!playing) return;
+        position += 1;
+        earned += 0.0007;
+        if (position >= duration) position = 0;
+        render();
+      }, 1000);
+
+      render();
+    })();
+  </script>
+</body>
+</html>

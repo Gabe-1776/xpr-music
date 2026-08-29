@@ -1,0 +1,16 @@
+{
+  "name": "xpr-music-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "XPR Music local testnet backend \u2014 wallet login (identity proof), accounts, favorites/playlists, NFT-song catalog.",
+  "scripts": {
+    "start": "node server.js",
+    "verify-auth": "node test/verify-auth.mjs",
+    "test:meter": "node --test test/stream-meter.test.cjs"
+  },
+  "dependencies": {
+    "@proton/js": "^23.0.0",
+    "@proton/signing-request": "^5.1.0-rc-1"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "ondastream-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Onda 2s rolling stream vest — testnet. Same shape as Metal X vest, music-sized window + song registry.",
+  "scripts": {
+    "build": "npx proton-asc assembly/ondastream.contract.ts"
+  },
+  "dependencies": {
+    "@proton/js": "^23.0.11",
+    "proton-tsc": "^0.3.58"
+  },
+  "overrides": {
+    "typescript": "4.9.5"
+  }
+}

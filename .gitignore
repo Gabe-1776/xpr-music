@@ -1,0 +1,44 @@
+# --- Secrets (NEVER commit) ---
+app/catalog/auth-secret.json
+keeper.env
+**/.env
+**/.env.*
+
+# --- Runtime state written by server.js (live ledgers, not source) ---
+app/catalog/used-proofs.json
+app/catalog/token-balances.json
+app/catalog/balances.json
+app/catalog/grants.json
+app/catalog/metrics.json
+app/catalog/submissions.json
+app/catalog/recents.json
+
+# --- Machine-local key material lives OUTSIDE the repo (~/.xpr-testnet/) ---
+*.key.json
+*.pem
+
+# --- Version-scratch / local holding ---
+.versions/
+**/.versions/
+.backups/
+backups/
+.wip-elapsed-charge/
+*.bak
+*.bak-*
+*.pre-fixes*
+app/*.pre-*
+
+# --- Large / not source (live on Hetzner /opt/xpr-music) ---
+app/media/
+app/web/_archive/
+music/
+frontend_mockups/
+
+# --- Build / deps ---
+node_modules/
+contracts/ondastream/assembly/target/
+
+# --- OS ---
+.DS_Store
+._*
+FIXPROP-elapsed-charge.md
