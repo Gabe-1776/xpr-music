@@ -19,7 +19,7 @@ const ACTOR = process.env.ONDA_PRICER_ACCOUNT || "";
 const KEY = process.env.ONDA_PRICER_PRIVATE_KEY || "";
 // Should be a permission scoped to ondastream::settokrate ONLY — never a key
 // that can `setcode`, which could redeploy the contract and drain grants.
-const PERM = process.env.ONDA_PRICER_PERMISSION || "active";
+const PERM = process.env.ONDA_PRICER_PERMISSION || "";
 const POLL_MS = Number(process.env.ONDA_PRICE_POLL_MS || 6000);
 // Don't spend a transaction on noise; only rewrite on a real move.
 const MIN_CHANGE = Number(process.env.ONDA_PRICE_MIN_CHANGE || 0.01);
@@ -40,7 +40,12 @@ const TOKENS = [
 ];
 
 function enabled() {
-  return Boolean(ACTOR && KEY);
+  if (!ACTOR || !KEY) return false;
+  if (!PERM || PERM === "active" || PERM === "owner") {
+    console.error("onda pricing: ONDA_PRICER_PERMISSION must be a scoped child perm (not active/owner)");
+    return false;
+  }
+  return true;
 }
 
 let rpcClient = null;

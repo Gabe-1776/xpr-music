@@ -761,7 +761,9 @@ function scopeFor(req) {
     const target = req.headers["x-account-actor"];
     if (target && target !== actor) {
       const access = grantAccessFor(actor, target);
-      if (access) return { kind: "actor", id: target, access };
+      // grantAccessFor always returns an object (NO_ACCESS is truthy).
+      // Deny unless the grant actually has read.
+      if (access && access.read) return { kind: "actor", id: target, access };
     }
     return { kind: "actor", id: actor, access: { read: true, write: true } };
   }
@@ -955,7 +957,14 @@ async function sessionState(sess) {
     // lock on top of that double-charges the listener.
     pay_mode: ondaMode ? ondaMode.kind : "none",
     pay_mode_token: ondaMode ? { contract: ondaMode.contract, symbol: ondaMode.symbol, decimals: ondaMode.decimals } : null,
-    song,
+    song: song ? (() => {
+      const view = { ...songView(song) };
+      const file = typeof view.file === "string" ? view.file.replace(/^\/+/, "") : "";
+      if (file && !/^https?:/i.test(file) && !file.includes("..")) {
+        view.media_url = auth.signMediaUrl(`songs/${file}`);
+      }
+      return view;
+    })() : null,
     position: +sess.position.toFixed(2),
     // 8 decimals: at $0.00005/sec XPR accrues ~0.00012/sec, so the old 6/4
     // decimal rounding threw away visible movement in the first seconds.
@@ -1001,11 +1010,23 @@ async function sessionState(sess) {
 }
 
 // ---------------------------------------------------------------- helpers
+const CORS_ALLOW = String(process.env.ONDA_CORS_ORIGINS || "https://music.project-testing.xyz,http://127.0.0.1:8788,http://localhost:8788")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+
+function corsHeaders(req) {
+  const origin = req && req.headers && req.headers.origin;
+  const allow = origin && CORS_ALLOW.includes(origin) ? origin : CORS_ALLOW[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type,X-Session-Id,Authorization,X-Admin-Pin,X-Account-Actor",
+    Vary: "Origin",
+  };
+}
+
 function send(res, code, body, type = "application/json") {
   const data = type === "application/json" ? JSON.stringify(body) : body;
-  res.writeHead(code, { "Content-Type": type, "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Session-Id,Authorization" });
+  res.writeHead(code, { "Content-Type": type, ...corsHeaders(res.req || { headers: {} }) });
   res.end(data);
 }
 
@@ -1060,11 +1081,29 @@ async function nftLinkageFor(song) {
   }
 }
 
-function readBody(req) {
+const READ_BODY_DEFAULT = 2 * 1024 * 1024;
+const READ_BODY_UPLOAD = 55 * 1024 * 1024;
+
+function readBody(req, maxBytes = READ_BODY_DEFAULT) {
   return new Promise((resolve) => {
-    let b = "";
-    req.on("data", (c) => (b += c));
-    req.on("end", () => { try { resolve(JSON.parse(b || "{}")); } catch { resolve({}); } });
+    const chunks = [];
+    let n = 0;
+    let hit = false;
+    req.on("data", (c) => {
+      n += c.length;
+      if (hit) return;
+      if (n > maxBytes) {
+        hit = true;
+        req.destroy();
+        resolve({ __too_large: true });
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => {
+      if (hit) return;
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}")); } catch { resolve({}); }
+    });
   });
 }
 
@@ -1072,9 +1111,16 @@ const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; cha
   ".mp3": "audio/mpeg", ".mp4": "video/mp4", ".webm": "video/webm", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml" };
 
 function serveStatic(res, req, filePath) {
-  const full = path.join(ROOT, filePath);
-  if (!full.startsWith(ROOT) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) {
+  const full = path.resolve(ROOT, filePath);
+  if (!full.startsWith(path.resolve(ROOT) + path.sep) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) {
     return send(res, 404, { error: "not found" });
+  }
+  if (filePath.startsWith("media/songs/") || filePath.startsWith("media/videos/")) {
+    const u = new URL(req.url, "http://x");
+    const rel = filePath.slice("media/".length);
+    if (!auth.verifyMediaSig(rel, u.searchParams.get("exp") || "", u.searchParams.get("sig") || "")) {
+      return send(res, 401, { error: "signed media url required" });
+    }
   }
   const stat = fs.statSync(full);
   const type = MIME[path.extname(full)] || "application/octet-stream";
@@ -1152,6 +1198,7 @@ function rateLimit(req, pathname) {
 }
 
 const server = http.createServer(async (req, res) => {
+  res.req = req;
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   if (!rateLimit(req, p)) return send(res, 429, { error: "too many requests" });
@@ -1317,16 +1364,18 @@ const server = http.createServer(async (req, res) => {
   // an agent needs `read` on an owner to see that owner's session; without a
   // grant it sees only aggregate counts (no per-listener detail).
   if (p === "/api/agents/listeners") {
-    const actor = (url.searchParams.get("actor") || "").trim();
+    const header = req.headers["authorization"] || "";
+    const m = header.match(/^Bearer\s+(\S+)$/i);
+    const actor = m ? auth.verifyToken(m[1]) : null;
+    if (!actor) return send(res, 401, { error: "wallet login required" });
     const owner = (url.searchParams.get("owner") || "").trim();
     const format = (url.searchParams.get("format") || "").trim();
     const now = Date.now();
     const live = [];
-    for (const [sid, sess] of sessions) {
+    for (const sess of sessions.values()) {
       if (!sess.playing || now - Number(sess.lastTick || 0) >= 15000) continue;
       const song = SONGS.find((s) => s.id === sess.songId) || null;
       live.push({
-        sid,
         actor: sess.actor || "",
         song_id: sess.songId,
         title: song ? song.title : null,
@@ -1334,20 +1383,17 @@ const server = http.createServer(async (req, res) => {
         position_s: Math.round(Number(sess.position) || 0),
       });
     }
+    if (!owner) {
+      return send(res, 200, { count: live.length, listeners: [] });
+    }
+    const access = grantAccessFor(actor, owner);
+    if (!access || !access.read) return send(res, 403, { error: "read access to that owner required" });
+    const scoped = live.filter((l) => l.actor === owner);
     if (format === "toon") {
-      // Token-efficient output for agents (Kun Chen / AXI): one line per
-      // listener, semantics over JSON ceremony.
-      const lines = live.map((l) => `${l.actor || l.sid.slice(0,8)} | ${l.title ?? "-"} | ${l.position_s}s`);
-      return send(res, 200, { text: `live_listeners=${live.length}\n${lines.join("\n")}`.trim(), count: live.length });
+      const lines = scoped.map((l) => `${l.actor || "-"} | ${l.title ?? "-"} | ${l.position_s}s`);
+      return send(res, 200, { text: `live_listeners=${scoped.length}\n${lines.join("\n")}`.trim(), count: scoped.length });
     }
-    // Grant gate for per-listener detail when an owner is requested.
-    if (owner) {
-      const access = grantAccessFor(actor, owner);
-      if (!access || !access.read) return send(res, 403, { error: "read access to that owner required" });
-      const scoped = live.filter((l) => l.actor === owner);
-      return send(res, 200, { listeners: scoped, count: scoped.length });
-    }
-    return send(res, 200, { listeners: live, count: live.length });
+    return send(res, 200, { listeners: scoped, count: scoped.length });
   }
 
   if (p === "/api/radio") {
@@ -1412,6 +1458,22 @@ const server = http.createServer(async (req, res) => {
     const sid = reusable ? body.session_id : crypto.randomUUID();
     getSession(sid);
     return send(res, 200, { session_id: sid });
+  }
+
+  if (p === "/api/session/media-url" && req.method === "GET") {
+    const sid = req.headers["x-session-id"];
+    const sess = sid && sessions.get(sid);
+    if (!sess) return send(res, 401, { error: "no session" });
+    const actor = bindSessionActor(req, sess);
+    if (!actor) return send(res, 401, { error: "wallet login required" });
+    const songId = url.searchParams.get("song_id") || "";
+    const song = SONGS.find((s) => s.id === songId);
+    if (!song) return send(res, 404, { error: "unknown song" });
+    const file = String(song.file || "").replace(/^\/+/, "");
+    if (!file || /^https?:/i.test(file) || file.includes("..")) {
+      return send(res, 400, { error: "no local audio" });
+    }
+    return send(res, 200, { url: auth.signMediaUrl(`songs/${file}`), song_id: song.id });
   }
 
   if (p === "/api/session/state") {
@@ -1970,7 +2032,8 @@ const server = http.createServer(async (req, res) => {
 
   // Artist submissions + admin moderation
   if (p === "/api/submissions" && req.method === "POST") {
-    const body = await readBody(req);
+    const body = await readBody(req, READ_BODY_UPLOAD);
+    if (body && body.__too_large) return send(res, 413, { error: "body too large" });
     // S2 gate: identity comes ONLY from a verified wallet token, or the
     // operator's admin PIN (legacy console path). body.actor alone is never
     // trusted — owner names are public via /api/catalog.
@@ -2018,14 +2081,24 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync(path.join(ROOT, "media", "songs", "uploads", fname), Buffer.from(audioB64, "base64"));
       file = `uploads/${fname}`;
     } else if (fileUrl) {
-      file = fileUrl;
+      const v = fileUrl.replace(/^\/+/, "");
+      if (v.includes("..") || /^https?:/i.test(fileUrl) || fileUrl.startsWith("//")) {
+        return send(res, 400, { error: "audio must be an uploaded file, not a remote URL" });
+      }
+      if (!/^(uploads\/)?[A-Za-z0-9._-]+\.(mp3|wav|ogg|m4a|flac)$/i.test(v) && !/^uploads\/[0-9a-f-]+\.(mp3|wav|ogg|m4a|flac)$/i.test(v)) {
+        return send(res, 400, { error: "audio path not allowed" });
+      }
+      file = v;
     }
     if (!file) return send(res, 400, { error: "audio file is required" });
 
     // Cover is OPTIONAL now: art belongs to the album, so a track filed under
     // one inherits it (songView). A single with no art falls back to the
-    const cover = writeCoverUpload(body.cover_base64, body.cover_name)
-      || (typeof body.cover === "string" ? body.cover.trim() : "");
+    let cover = writeCoverUpload(body.cover_base64, body.cover_name);
+    if (!cover && typeof body.cover === "string") {
+      const c = body.cover.trim();
+      cover = /^\/web\/assets\/covers\/[A-Za-z0-9._-]+\.(png|jpe?g|webp|gif)$/i.test(c) ? c : "";
+    }
 
     // Music video: optional URL, or a base64 .mp4/.webm upload saved into
     // media/videos/. Stored as the catalog-relative path (like `file`).
@@ -2052,7 +2125,14 @@ const server = http.createServer(async (req, res) => {
       fs.writeFileSync(path.join(ROOT, "media", "videos", "uploads", fname), buf);
       video = `uploads/${fname}`;
     } else if (videoUrl) {
-      video = videoUrl;
+      const v = videoUrl.replace(/^\/+/, "");
+      if (v.includes("..") || /^https?:/i.test(videoUrl) || videoUrl.startsWith("//")) {
+        return send(res, 400, { error: "video must be an uploaded file, not a remote URL" });
+      }
+      if (!/^uploads\/[0-9a-f-]+\.(mp4|webm)$/i.test(v)) {
+        return send(res, 400, { error: "video path not allowed" });
+      }
+      video = v;
     }
 
     // Payout: artists may name a primary payout wallet and split earnings
@@ -2549,6 +2629,9 @@ const server = http.createServer(async (req, res) => {
     if (totalPct > 100) return send(res, 400, { error: "splits exceed 100%" });
     for (const sp of splits) {
       if (!sp.wallet || typeof sp.wallet !== "string") return send(res, 400, { error: "each split needs a wallet" });
+      if (!isStreamPayout(String(sp.wallet).trim().toLowerCase())) {
+        return send(res, 400, { error: `split wallet "${sp.wallet}" must be a real XPR account (not ondastream)` });
+      }
       if (!Number(sp.pct) || Number(sp.pct) <= 0) return send(res, 400, { error: "each split needs a positive pct" });
     }
     song.splits = splits.map((sp) => ({ wallet: sp.wallet.trim().toLowerCase(), pct: Number(sp.pct) }));

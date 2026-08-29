@@ -429,6 +429,27 @@ function verifyToken(token) {
   }
 }
 
+const MEDIA_TTL_S = 2 * 3600;
+
+function signMediaUrl(relPath) {
+  const clean = String(relPath || "").replace(/^\/+/, "").replace(/\.\./g, "");
+  const exp = Math.floor(Date.now() / 1000) + MEDIA_TTL_S;
+  const sig = crypto.createHmac("sha256", SECRET).update(`${clean}|${exp}`).digest("hex");
+  return `/media/${clean.split("/").map(encodeURIComponent).join("/")}?exp=${exp}&sig=${sig}`;
+}
+
+function verifyMediaSig(relPath, exp, sig) {
+  if (typeof relPath !== "string" || typeof exp !== "string" || typeof sig !== "string") return false;
+  if (!/^[0-9]+$/.test(exp) || !/^[0-9a-f]{64}$/.test(sig)) return false;
+  const expN = Number(exp);
+  if (!Number.isFinite(expN) || expN < Math.floor(Date.now() / 1000)) return false;
+  const clean = relPath.replace(/^\/+/, "").replace(/\.\./g, "");
+  const want = crypto.createHmac("sha256", SECRET).update(`${clean}|${expN}`).digest("hex");
+  const a = Buffer.from(sig, "hex");
+  const b = Buffer.from(want, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 module.exports = {
   AuthError,
   verifyIdentityProof,
@@ -436,6 +457,8 @@ module.exports = {
   issueChallenge,
   mintAccessToken,
   verifyToken,
+  signMediaUrl,
+  verifyMediaSig,
   TESTNET_CHAIN_ID,
   LOGIN_CONTAINER: LOGIN_CONTRACT,
   LOGIN_CONTRACT,

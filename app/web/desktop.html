@@ -1788,7 +1788,16 @@
       };
       const QUEUE_MAX = 25;
       const RECENT_MAX = 40;
-      const mediaUrl = (song) => `/media/songs/${String(song.file || "").split("/").map(encodeURIComponent).join("/")}`;
+      const mediaUrl = (song) => (song && song.media_url) ? song.media_url : "";
+      async function resolveMedia(song) {
+        if (!song) return "";
+        if (song.media_url) return song.media_url;
+        try {
+          const data = await request(`/api/session/media-url?song_id=${encodeURIComponent(song.id)}`);
+          if (data && data.url) { song.media_url = data.url; return data.url; }
+        } catch (_) {}
+        return "";
+      }
       const safeColor = (value) => /^#[0-9a-f]{6}$/i.test(value || "") ? value : "#5a2d94";
       // Escapes &,<,> AND both quote flavors: output lands inside
       // double-quoted HTML attributes (aria-label="${html(...)}"), where an
@@ -5371,17 +5380,19 @@
         renderAll();
       }
 
-      function preloadNext() {
+      async function preloadNext() {
         if (!state.songs.length) return;
         const song = state.songs[(state.currentIndex + 1) % state.songs.length];
-        nextAudio.src = mediaUrl(song);
+        const src = await resolveMedia(song);
+        if (!src) return;
+        nextAudio.src = src;
         nextAudio.load();
       }
-      function setAudioSong(song, at = 0) {
+      async function setAudioSong(song, at = 0) {
         state.suppressPause = true;
         audio.pause();
         state.suppressPause = false;
-        audio.src = mediaUrl(song);
+        audio.src = await resolveMedia(song);
         audio.load();
         if (at > 0) {
           const set = () => { try { audio.currentTime = Math.min(at, song.duration_s); } catch (_) {} };
@@ -5413,7 +5424,7 @@
         }
         localWrite("xpr_music_song_id", state.currentSong.id);
         pushRecent(state.currentSong.id);
-        setAudioSong(state.currentSong, at);
+        await setAudioSong(state.currentSong, at);
         renderAll();
         if (!autoplay) return;
         const song = state.currentSong;
