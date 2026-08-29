@@ -1,6 +1,7 @@
 # Production pin — music.project-testing.xyz
 
 **Pinned:** 2026-08-29 (Grok Build)  
+**Git:** private `https://github.com/Gabe-1776/xpr-music` — `main` = this pin (`363e0eb`); `wip/elapsed-charge` unpublished  
 **Host:** Hetzner `167.233.60.62` `/opt/xpr-music` (`xpr-music.service`)  
 **URL:** https://music.project-testing.xyz  
 **Chain:** XPR **testnet** account `ondastream`  
