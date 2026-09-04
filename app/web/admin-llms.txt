@@ -1,0 +1,85 @@
+# Onda Operator & Guarddog Guide (`/admin/llms.txt`)
+
+This document is for operator agents, infrastructure bots, and engineering teams maintaining Onda (`xpr-music`). It specifies the runtime security architecture (Guarddog), admin endpoints, and incident response playbooks.
+
+---
+
+## 1. Guarddog Architecture Overview
+
+Guarddog is the autonomous runtime defense layer protecting Onda's streaming funds, RPC budgets, and server availability against malicious bots, scraping, and runaway agent loops.
+
+### Core Mechanisms:
+1. **Actor Velocity & Loop Detection:**
+   Tracks requests per minute per XPR Actor. If an actor exceeds 100 req/min with >50% error rates, Guarddog flags an anomaly or auto-quarantines the actor.
+2. **Quarantine / Penalty Box (Timeouts):**
+   Timed-out actors receive `HTTP 429 Too Many Requests` with a deterministic `retry_after_seconds` header. Funds remain intact; only API ingress is temporarily blocked.
+3. **Tarpitting (Connection Stalling):**
+   When enabled, requests from quarantined actors are delayed by 5 seconds before returning 429, exhausting bot thread pools.
+4. **Master Circuit Breaker:**
+   Fails closed in emergencies (`payments_enabled = false`, contract `setpaused(true)`). Stops all keeper accrual and debit transactions while keeping user withdrawals open.
+
+---
+
+## 2. Guarddog Admin API
+
+All admin requests require the header `X-Admin-Pin: <ADMIN_PIN>`.
+
+### `GET /api/admin/guarddog`
+Returns current Guarddog status, metrics, and watchlist:
+```json
+{
+  "state": {
+    "autoTimeout": true,
+    "tarpit": true,
+    "kycGate": false,
+    "circuitBreaker": false
+  },
+  "metrics": {
+    "inboundReqRate": 12.4,
+    "rpcLoad": 4.2,
+    "activeSessions": 3,
+    "timedOutActors": 1
+  },
+  "watchlist": [
+    { "actor": "bobsbot.xpr", "rpm": 140, "errorRate": 0.85, "status": "timed_out", "expiresIn": 720 }
+  ]
+}
+```
+
+### `POST /api/admin/guarddog/toggle`
+Updates defense toggles:
+```json
+// Request Body
+{ "key": "autoTimeout" | "tarpit" | "kycGate" | "circuitBreaker", "value": true }
+```
+
+### `POST /api/admin/guarddog/timeout`
+Manually places an actor into timeout:
+```json
+// Request Body
+{ "actor": "badagent.xpr", "minutes": 15, "reason": "Accidental loop detected" }
+```
+
+### `POST /api/admin/guarddog/lift-timeout`
+Immediately clears timeout for an actor:
+```json
+// Request Body
+{ "actor": "badagent.xpr" }
+```
+
+---
+
+## 3. Incident Response Playbooks
+
+### Playbook A: Runaway Agent Loop
+1. Check `GET /api/admin/guarddog` watchlist.
+2. Identify the offending actor.
+3. Put the actor in a 15m timeout: `POST /api/admin/guarddog/timeout` with `{ "actor": "...", "minutes": 15 }`.
+4. The user's wallet is not banned; their local loop is neutralized.
+
+### Playbook B: Severe On-Chain Anomaly / Drain Probe
+1. Engage Master Circuit Breaker:
+   `POST /api/admin/guarddog/toggle` with `{ "key": "circuitBreaker", "value": true }`.
+2. This stops all keeper pulses immediately.
+3. On-chain, call `ondastream::setpaused(true)`.
+4. Triage contract balances against `catalog/balances.json`.

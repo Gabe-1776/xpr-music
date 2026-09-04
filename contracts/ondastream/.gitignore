@@ -1,0 +1,5 @@
+node_modules/
+assembly/target/*.wast
+assembly/target/index.ts
+assembly/target/token.inline.ts
+assembly/target/*.contract.ts

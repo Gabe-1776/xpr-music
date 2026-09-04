@@ -1,0 +1,95 @@
+# Onda (music.project-testing.xyz) — User Agent Guide
+
+Onda is a Web3 music streaming platform on XPR Network with per-second micropayments for artists. This document teaches AI agents (Claude Desktop, OpenClaw, Cursor, Hermes, etc.) how to operate the music player on behalf of a human user via MCP (Model Context Protocol) and CLI.
+
+---
+
+## 1. Authentication & Scoped Delegation
+
+An agent controls playback on behalf of a human using either:
+1. **User Session Token:** `Authorization: Bearer <token>`
+2. **Scoped Agent Grant (Recommended):** The human grants the agent scoped access under Onda Settings → **Agents** (`catalog/grants.json`). The agent authenticates with its own key and passes the human's account in the header:
+   ```http
+   Authorization: Bearer <agent_token>
+   X-Account-Actor: <human_wallet>
+   ```
+   *Note: Read-only grants allow searching and browsing; Write-enabled grants allow queue management and account top-up.*
+
+---
+
+## 2. MCP Tools Specification
+
+When configuring your MCP server for Onda, expose these standard tools:
+
+### `onda_now_playing`
+* **Description:** Retrieve currently playing song, artist, album art, elapsed seconds, and rate.
+* **Input:** none
+* **API:** `GET /api/session/state`
+
+### `onda_play`
+* **Description:** Start or resume music playback. Optionally search and play a specific song.
+* **Input:**
+  * `query` (string, optional): Song title or artist name to find and play.
+  * `song_id` (string, optional): Exact song ID from the catalog.
+* **API:** `POST /api/session/play` with `{ "song_id": "<id>" }`
+
+### `onda_pause`
+* **Description:** Pause playback and settle the current streaming window.
+* **Input:** none
+* **API:** `POST /api/session/pause`
+
+### `onda_skip`
+* **Description:** Skip to next or previous song in queue.
+* **Input:**
+  * `direction` ("next" | "prev", required): Skip forward or backward.
+* **API:** `POST /api/session/skip` with `{ "direction": "next" }`
+
+### `onda_search`
+* **Description:** Search the Onda music catalog.
+* **Input:**
+  * `query` (string, required): Search keyword (title, artist, genre).
+  * `limit` (number, optional, default: 10): Maximum results to return.
+* **API:** `GET /api/catalog`
+
+### `onda_get_balance`
+* **Description:** Check the user's current Top-Up balance (piggybank) available for streaming.
+* **Input:** none
+* **API:** `GET /api/session/state` (reads `onda_topup`)
+
+### `onda_topup`
+* **Description:** Deposit funds into the user's streaming piggybank from the agent or human wallet.
+* **Input:**
+  * `amount` (number, required): Amount to top up (e.g., 5.0).
+  * `token` (string, optional, default: "XPR"): Token symbol ("XPR" | "XUSDC").
+* **Mechanism:** On-chain transfer to contract `ondastream` with memo `onda` or through `/api/account/topup`.
+
+---
+
+## 3. CLI Quick Reference
+
+For terminal and shell agents, control Onda using the CLI wrapper:
+
+```bash
+# Status & Playback
+onda status                  # Show now-playing, queue, and piggybank balance
+onda play                    # Resume playback
+onda play "signal bloom"     # Search and play track
+onda pause                   # Pause playback and settle stream
+onda next                    # Skip to next song
+onda prev                    # Return to previous song
+
+# Library & Queue
+onda search "ambient"        # Search catalog
+onda queue add <song_id>     # Add track to queue
+onda queue list              # Show upcoming songs
+
+# Spending & Top-up
+onda balance                 # Show streaming balance
+onda topup 10 XPR            # Deposit 10 XPR to top-up piggybank
+```
+
+---
+
+## 4. Best Practices for Agents Managing Playback
+- **Sleep between polls:** When tracking playback state, poll `/api/session/state` at most once every 3 to 5 seconds.
+- **Respect timeouts:** If the server returns HTTP 429 (`actor_timeout`), inspect `retry_after_seconds` and pause requests until the cooldown window elapses.

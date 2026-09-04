@@ -1,0 +1,85 @@
+{
+  "xprmusic": {
+    "name": "Onda",
+    "updated_at": "2026-08-20T04:24:51.313Z",
+    "payout_account": "felixpaw"
+  },
+  "chapeldeep": {
+    "name": "Chapel Deep",
+    "bio": "Chapel Deep is a house project built the long way round: the beat is 1993 Chicago heard through a maths library \u2014 four-on-the-floor, offbeat open hats, piano stabs on the upbeat, warm organ bass, and a breakdown that takes the kick away so the drop means something. The vocal is a deep, warm baritone singing real gospel-house lyrics \u2014 devotion, endurance and the sunrise after the long night \u2014 with a communal choir answering the lead on the hook. Chapel Deep is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/chapel-deep.jpg",
+    "updated_at": "2026-08-20T00:00:00.000Z",
+    "payout_account": "musictesting"
+  },
+  "porchlight": {
+    "name": "Porchlight",
+    "bio": "Porchlight is a 90s piano-house collective. Every piano stab, kick, sub-bass and sung note was created with AI-assisted procedural synthesis and a synth-voice choir. The vocal is a communal gang-vocal: a short, chantable hook the whole room sings back. Porchlight is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/porchlight.jpg",
+    "updated_at": "2026-08-21T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "whiskeybend": {
+    "name": "Whiskey Bend",
+    "bio": "Whiskey Bend is a Southern rock project built for the long haul: every guitar, slide, drum and raspy baritone vocal was synthesized from scratch in code, no samples, no borrowed voices. The songs are about the road \u2014 life's curves, its hills, its heavy loads, and the search for meaning down the way. Whiskey Bend is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/whiskey-bend.jpg",
+    "updated_at": "2026-08-21T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "velvetarcade": {
+    "name": "Velvet Arcade",
+    "bio": "Velvet Arcade is a synth-funk project built in the glowing space between Prince, Stevie Wonder and late-night neon. Every synth bass, slap, falsetto and drum hit was synthesized from scratch in code \u2014 no samples, no borrowed voices. The songs move through uptempo funk, slow-jam soul and moody nocturnal grooves: one artist, three sides of the same neon heart. Velvet Arcade is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/velvet-arcade.jpg",
+    "updated_at": "2026-08-21T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "lunardrift": {
+    "name": "Lunar Drift",
+    "bio": "Lunar Drift is a melodic trap artist from the wrong side of the city \u2014 every 808, hi-hat roll and sung hook on Scars & Starlight was composed by an AI model directed by code. No samples, no borrowed flows. The songs are about the space between where you started and where you're trying to go: the scars you carry, the stars you chase. Lunar Drift is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/lunar-drift.jpg",
+    "updated_at": "2026-08-21T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "sorrowfulviolet": {
+    "name": "Sorrowful Violet",
+    "bio": "Sorrowful Violet is a melodic emo-trap project built the long way round: every 808, hat roll, piano phrase and drawn-out hook on Static Season is synthesized from scratch \u2014 no samples, no borrowed flows. The sound sits in the narrow, neon-bleeding space between a Juice-WRLD-style sad melodic hook and a Lil-Yachty-style bouncy slurred baritone on the verses \u2014 grief on the chorus, bounce on the way there. The songs orbit the same few themes: the scar that refuses to fade, the light that leaks through it anyway, and the long season of keeping going when the old wiring won't stop humming. Sorrowful Violet is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/sorrowful-violet.jpg",
+    "updated_at": "2026-08-22T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "ghostbell": {
+    "name": "Ghostbell",
+    "bio": "Ghostbell is a dark-trap project built the long way round: every 808, choir pad, trap hat roll and scorched bar on Empty Threats is synthesized from scratch \u2014 no samples, no borrowed flows, no borrowed ad-libs. The sound lives in the neon-grey space between a Metro-Boomin-style cinematic beat \u2014 gothic choir pads, ominous minor keys, half-time sub that hits like a door in an empty room \u2014 and a Migos-style aggressive triplet flow, rapid and cocky, spitting bars like they're counting the threats low. Two sides of the same empty club: one track broods, the next one lurches at you. Ghostbell is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/ghostbell.jpg",
+    "updated_at": "2026-08-22T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "medianoche": {
+    "name": "Medianoche",
+    "bio": "Medianoche is a rock en espa\u00f1ol project built the long way round: every jangly guitar, pulsing bass, reverb-wet chord and sung line on Noche de Roca is synthesized from scratch \u2014 no samples, no borrowed riffs, no borrowed voices. The sound sits in the late-80s / early-90s Spanish alt-rock sweet spot: ringing clean guitars under a driving beat, minor-key atmospherics, and a low, urgent Spanish vocal that lifts into a soaring chorus \u2014 the kind of song you play loud driving fast down an empty highway at midnight. The songs orbit the same few things: the road, the night, a love that leaves its shape behind, and the way memory keeps the guitar ringing. Medianoche is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/medianoche.jpg",
+    "updated_at": "2026-08-22T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "aurelle": {
+    "name": "Aurelle",
+    "bio": "Aurelle is a neo-soul project built the long way round: every warm Rhodes chord, 7th-voiced piano, deep groove bass and tender sung note on Velvet Sessions is synthesized from scratch \u2014 no samples, no borrowed riffs, no borrowed voices. The sound lives in the late-night slow-burn of classic soul heard through warm electric keys: a low, honeyed vocal over a laid-back groove, the kind that makes a room feel smaller and warmer. The songs orbit the same few things: a love that stays, a day that finally feels light, and the joy of just being steady. Aurelle is a fictional artist and an AI-assisted demo, not a person.",
+    "photo": "/web/assets/artists/aurelle.jpg",
+    "updated_at": "2026-08-22T00:00:00.000Z",
+    "payout_account": "felixpaw"
+  },
+  "vulcanwallet": {
+    "payout_account": "felixpaw",
+    "name": "Vulcan",
+    "updated_at": "2026-08-23T20:38:43.257Z"
+  },
+  "ondastream": {
+    "payout_account": "felixpaw"
+  },
+  "felixpaw": {
+    "name": "destiny",
+    "bio": "destiny is legit",
+    "payout_account": "felixpaw",
+    "photo": "/web/assets/artists/85e1ed20-ae65-4d48-9149-8767e29e5ca3.jpg",
+    "updated_at": "2026-08-24T07:14:10.431538+00:00"
+  }
+}

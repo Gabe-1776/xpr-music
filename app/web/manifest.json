@@ -1,0 +1,18 @@
+{
+  "name": "Onda",
+  "short_name": "Onda",
+  "description": "Onda — music streaming on XPR Network. Every second supports the sound.",
+  "start_url": "/mobile",
+  "display": "standalone",
+  "background_color": "#0b0b10",
+  "theme_color": "#0b0b10",
+  "orientation": "portrait",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    { "src": "/web/assets/artists/xpr-music.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "/web/assets/covers/electric-hearts.jpg", "sizes": "512x512", "type": "image/jpeg" }
+  ],
+  "media_handlers": [
+    { "accept": [{ "audio/mpeg": [".mp3"] }], "action": "/mobile" }
+  ]
+}

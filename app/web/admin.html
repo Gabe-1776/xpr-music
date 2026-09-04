@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Onda — Admin</title>
+<style>
+  :root {
+    --bg-1: #10101a; --bg-2: #16161f; --bg-3: #1c1c27;
+    --line: rgba(255,255,255,.08); --line-bright: rgba(255,255,255,.15);
+    --muted: #a3a2b1; --dim: #70707e; --white: #fff;
+    --gold: #e8b84b; --gold-strong: #f4c95d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-1); color: var(--white); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--gold); text-decoration: none; }
+
+  .admin-shell { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; }
+  .admin-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .admin-topbar h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+  .admin-topbar .sub { color: var(--dim); font-size: 11px; margin-top: 3px; }
+  .admin-topbar .actions { display: flex; gap: 10px; align-items: center; }
+  .admin-back { padding: 8px 14px; border: 1px solid var(--line-bright); border-radius: 9px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 650; }
+  .admin-back:hover { color: #fff; border-color: var(--gold); }
+  .admin-lock { padding: 8px 14px; border: 1px solid var(--line-bright); border-radius: 9px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 650; }
+  .admin-lock:hover { color: #ff9d9d; border-color: rgba(255,120,120,.6); }
+
+  /* PIN gate */
+  .admin-gate { max-width: 380px; margin: 60px auto; padding: 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg-2); text-align: center; }
+  .admin-gate h2 { font-size: 18px; font-weight: 800; margin: 0 0 6px; }
+  .admin-gate p { color: var(--dim); font-size: 12px; margin: 0 0 16px; }
+  .admin-gate input { width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--bg-1); color: #fff; font-size: 15px; text-align: center; letter-spacing: .05em; }
+  .admin-gate button { width: 100%; height: 44px; margin-top: 12px; border: 0; border-radius: 10px; background: var(--gold); color: #1b1204; font-weight: 800; }
+  .admin-gate button:active { transform: scale(.98); }
+  .admin-gate .err { color: #ff9d9d; font-size: 12px; margin-top: 10px; min-height: 15px; }
+
+  /* Cards */
+  .admin-grid { display: flex; flex-direction: column; gap: 14px; }
+  .admin-card { padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2); }
+  .admin-card-title { color: #fff; font-size: 14px; font-weight: 760; }
+  .admin-card-sub { margin-top: 3px; color: var(--muted); font-size: 11px; }
+  .admin-cut-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .admin-cut-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+  .admin-cut-input { width: 90px; height: 36px; padding: 0 12px; border: 1px solid var(--line-bright); border-radius: 8px; background: var(--bg-1); color: #fff; font-size: 14px; }
+  .admin-cut-row button { height: 36px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--gold); color: #1b1204; font-weight: 750; }
+  .admin-cut-row button:active { transform: scale(.97); }
+  .admin-search-input { width: 100%; height: 40px; margin-top: 12px; padding: 0 12px; border: 1px solid var(--line-bright); border-radius: 9px; background: var(--bg-1); color: #fff; font-size: 13px; }
+  .admin-search-input::placeholder { color: var(--dim); }
+  .admin-song-remove { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); }
+  .admin-song-remove:last-of-type { border-bottom: 0; }
+  .admin-song-name { color: #fff; font-size: 12.5px; font-weight: 660; }
+  .admin-song-meta { color: var(--muted); font-size: 10.5px; margin-top: 2px; }
+  .admin-song-none { padding: 12px 0; color: var(--dim); font-size: 12px; }
+  .admin-reject { padding: 6px 12px; border-radius: 14px; color: #ff9d9d; background: rgba(255,120,120,.12); font-size: 10px; font-weight: 800; border: 0; }
+  .admin-reject:hover { background: rgba(255,120,120,.22); }
+  .admin-chart { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .admin-chart-row { display: flex; align-items: center; gap: 10px; }
+  .admin-chart-label { flex: 0 0 170px; color: var(--muted); font-size: 11px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .admin-chart-track { flex: 1; display: flex; align-items: center; gap: 8px; }
+  .admin-chart-bar { height: 14px; border-radius: 4px; background: linear-gradient(90deg, #e8b84b, #d99a2b); min-width: 2px; }
+  .admin-chart-val { color: #fff; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .admin-trend-period { display: flex; gap: 6px; margin-top: 12px; }
+  .admin-trend-btn { padding: 6px 13px; border: 1px solid var(--line-bright); border-radius: 8px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 700; }
+  .admin-trend-btn:hover { color: #fff; border-color: var(--gold); }
+  .admin-trend-btn.active { color: #1b1204; background: var(--gold-strong); border-color: var(--gold-strong); }
+  .admin-trend-btn:active { transform: scale(.97); }
+  .admin-profit-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .admin-profit-cell { flex: 1 1 100px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1); text-align: center; }
+  .admin-profit-label { color: var(--muted); font-size: 10.5px; font-weight: 650; }
+  .admin-profit-val { margin-top: 5px; color: var(--gold-strong); font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .admin-profit-note { margin-top: 10px; color: var(--muted); font-size: 11px; }
+  .admin-empty { padding: 25px 16px; border: 1px dashed var(--line-bright); border-radius: 11px; color: var(--dim); font-size: 12px; text-align: center; }
+  .admin-toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px); padding: 11px 18px; border-radius: 10px; background: #1b1204; color: var(--gold-strong); font-size: 13px; font-weight: 650; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 50; }
+  .admin-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (max-width: 560px) {
+    .admin-shell { padding: 16px 14px 60px; }
+    .admin-chart-label { flex: 0 0 110px; }
+    .admin-profit-cell { flex: 1 1 100%; }
+  }
+  /* Guarddog */
+  .guarddog-badge { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(232,184,75,.16); color: var(--gold-strong); font-size: 10px; font-weight: 800; letter-spacing: .03em; vertical-align: middle; }
+  .guarddog-metrics { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .guarddog-metric-cell { flex: 1 1 120px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-1); text-align: center; }
+  .guarddog-metric-label { color: var(--muted); font-size: 10.5px; font-weight: 650; }
+  .guarddog-metric-val { margin-top: 4px; color: var(--white); font-size: 17px; font-weight: 800; }
+  .guarddog-toggles { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .guarddog-toggle-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1); }
+  .guarddog-toggle-row.danger-zone { border-color: rgba(255,120,120,.3); background: rgba(255,120,120,.05); }
+  .guarddog-toggle-info { flex: 1; }
+  .guarddog-toggle-title { color: #fff; font-size: 13px; font-weight: 700; }
+  .guarddog-toggle-desc { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+  .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,.15); transition: .2s; border-radius: 24px; }
+  .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%; }
+  input:checked + .slider { background-color: var(--gold); }
+  input:checked + .slider.danger { background-color: #ff6b6b; }
+  input:checked + .slider:before { transform: translateX(20px); background-color: #1b1204; }
+  input:checked + .slider.danger:before { background-color: #fff; }
+  .guarddog-table-wrap { margin-top: 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: 9px; }
+  .guarddog-table { width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left; }
+  .guarddog-table th { padding: 8px 12px; background: rgba(255,255,255,.04); color: var(--muted); font-weight: 650; border-bottom: 1px solid var(--line); }
+  .guarddog-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); color: #fff; }
+  .guarddog-table tr:last-child td { border-bottom: 0; }
+  .status-tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 750; }
+  .status-tag.healthy { background: rgba(72,199,142,.15); color: #48c78e; }
+  .status-tag.timed_out { background: rgba(255,120,120,.18); color: #ff9d9d; }
+  .btn-action-small { padding: 4px 9px; border: 1px solid var(--line-bright); border-radius: 6px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 650; }
+  .btn-action-small:hover { color: #fff; border-color: var(--gold); }
+  .btn-action-danger { color: #ff9d9d; border-color: rgba(255,120,120,.4); }
+  .btn-action-danger:hover { background: rgba(255,120,120,.15); }
+  .guarddog-manual-form { display: flex; gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  .guarddog-manual-input { flex: 1 1 180px; height: 34px; padding: 0 10px; border: 1px solid var(--line-bright); border-radius: 7px; background: var(--bg-1); color: #fff; font-size: 12px; }
+  .guarddog-manual-select { height: 34px; padding: 0 8px; border: 1px solid var(--line-bright); border-radius: 7px; background: var(--bg-1); color: #fff; font-size: 12px; }
+  .guarddog-btn-submit { height: 34px; padding: 0 14px; border: 0; border-radius: 7px; background: var(--gold); color: #1b1204; font-weight: 700; font-size: 11.5px; }
+  .guarddog-links { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .guarddog-link-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line-bright); border-radius: 8px; background: rgba(255,255,255,.03); color: var(--gold); font-size: 11px; font-weight: 650; text-decoration: none; }
+  .guarddog-link-btn:hover { background: rgba(232,184,75,.1); border-color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="admin-shell">
+  <header class="admin-topbar">
+    <div>
+      <h1>Onda Admin</h1>
+      <div class="sub">Testnet accrual ledger &amp; catalog control</div>
+    </div>
+    <div class="actions">
+      <a class="admin-back" href="/">← Back to site</a>
+      <button class="admin-lock" id="lockBtn" type="button" hidden>Lock</button>
+    </div>
+  </header>
+
+  <div class="admin-grid" id="adminGrid"></div>
+</div>
+<div class="admin-toast" id="adminToast"></div>
+
+<script>
+(function () {
+  "use strict";
+  var state = { adminPin: null };
+  var toastTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg) {
+    var n = $("adminToast");
+    n.textContent = msg;
+    n.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { n.classList.remove("show"); }, 2600);
+  }
+  function setError(msg) { toast(msg || "Something went wrong"); }
+  function request(path, options) {
+    options = options || {};
+    var headers = new Headers(options.headers || {});
+    if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    if (state.adminPin) headers.set("X-Admin-Pin", state.adminPin);
+    return fetch(path, { method: options.method || "GET", headers: headers, body: options.body }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok) { var e = new Error(data.error || ("Request failed (" + r.status + ")")); e.status = r.status; throw e; }
+        return data;
+      });
+    });
+  }
+
+  var adminRenderToken = 0;
+  function renderTrendChart(card, series) {
+    var chart = card.querySelector(".admin-chart");
+    if (!chart) return;
+    chart.replaceChildren();
+    var buckets = (series || []).filter(function (b) { return b && typeof b === "object"; });
+    if (!buckets.length) {
+      var none = document.createElement("div");
+      none.className = "admin-song-none";
+      none.textContent = "No listening data in this window yet.";
+      chart.append(none);
+      return;
+    }
+    var max = Math.max.apply(null, [1].concat(buckets.map(function (b) { return b.plays || 0; })));
+    buckets.forEach(function (b) {
+      var row = document.createElement("div");
+      row.className = "admin-chart-row";
+      var label = document.createElement("span");
+      label.className = "admin-chart-label";
+      label.textContent = b.label || "";
+      var track = document.createElement("div");
+      track.className = "admin-chart-track";
+      var bar = document.createElement("div");
+      bar.className = "admin-chart-bar";
+      bar.style.width = (((b.plays || 0) / max) * 100) + "%";
+      var val = document.createElement("span");
+      val.className = "admin-chart-val";
+      val.textContent = (b.plays || 0) + " plays · " + Math.round((b.listen_seconds || 0) / 60) + "m";
+      track.append(bar, val);
+      row.append(label, track);
+      chart.append(row);
+    });
+  }
+  function adminCard(title, subtitle) {
+    var card = document.createElement("div");
+    card.className = "admin-card";
+    var t = document.createElement("div");
+    t.className = "admin-card-title";
+    t.textContent = title;
+    if (subtitle) { var s = document.createElement("div"); s.className = "admin-card-sub"; s.textContent = subtitle; card.append(s); }
+    card.append(t);
+    return card;
+  }
+
+  function renderGuarddogCard(data) {
+    var gd = data || {};
+    var gState = gd.state || { autoTimeout: false, tarpit: false, kycGate: true, circuitBreaker: false };
+    var gMetrics = gd.metrics || { inboundReqRate: 0, tarpitCount: 0, timedOutActors: 0 };
+    var watchlist = gd.watchlist || [];
+
+    var card = document.createElement("div");
+    card.className = "admin-card";
+
+    var header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.alignItems = "center";
+    header.style.justifyContent = "space-between";
+    var titleWrap = document.createElement("div");
+    var t = document.createElement("span");
+    t.className = "admin-card-title";
+    t.textContent = "Guarddog Autonomous Defense";
+    var badge = document.createElement("span");
+    badge.className = "guarddog-badge";
+    badge.textContent = "NEW FEATURE — IN DEVELOPMENT";
+    titleWrap.append(t, badge);
+    header.append(titleWrap);
+    card.append(header);
+
+    var sub = document.createElement("div");
+    sub.className = "admin-card-sub";
+    sub.textContent = "Autonomous runtime defense against scraping, runaway agent loops, and contract drain probes.";
+    card.append(sub);
+
+    var mRow = document.createElement("div");
+    mRow.className = "guarddog-metrics";
+    var mItems = [
+      ["Inbound Velocity", (gMetrics.inboundReqRate || 0) + " req/s"],
+      ["Tarpitted Scrapers", gMetrics.tarpitCount || 0],
+      ["Quarantined Actors", gMetrics.timedOutActors || 0],
+      ["Circuit Breaker", gState.circuitBreaker ? "ENGAGED" : "ARMED"]
+    ];
+    mItems.forEach(function (m) {
+      var cell = document.createElement("div");
+      cell.className = "guarddog-metric-cell";
+      var l = document.createElement("div");
+      l.className = "guarddog-metric-label";
+      l.textContent = m[0];
+      var v = document.createElement("div");
+      v.className = "guarddog-metric-val";
+      v.textContent = m[1];
+      if (m[0] === "Circuit Breaker" && gState.circuitBreaker) v.style.color = "#ff9d9d";
+      cell.append(l, v);
+      mRow.append(cell);
+    });
+    card.append(mRow);
+
+    var togglesContainer = document.createElement("div");
+    togglesContainer.className = "guarddog-toggles";
+
+    var toggleConfigs = [
+      {
+        key: "autoTimeout",
+        title: "Auto-Timeout Runaway Agents",
+        desc: "Automatically places any actor exceeding 100 req/min with >50% errors into a 15-minute penalty box. Breaks runaway loops without burning human KYC accounts.",
+        val: gState.autoTimeout,
+        danger: false
+      },
+      {
+        key: "tarpit",
+        title: "Bot Tarpitting (Connection Stalling)",
+        desc: "Delays responses to timed-out or scraping actors by 5 seconds before returning 429. Exhausts the bot's local worker threads instead of burning server bandwidth.",
+        val: gState.tarpit,
+        danger: false
+      },
+      {
+        key: "kycGate",
+        title: "Require Verified KYC / agentcore",
+        desc: "Restricts full-length audio streaming to biometric KYC'd WebAuth humans or verified agentcore-linked bots. Unverified guests remain restricted to 30s preview clips.",
+        val: gState.kycGate,
+        danger: false
+      },
+      {
+        key: "circuitBreaker",
+        title: "Master Circuit Breaker (Fail-Closed)",
+        desc: "Halts all on-chain keeper pulses, stops streaming balance deductions, and locks playback server-wide. User funds and withdrawals remain 100% accessible.",
+        val: gState.circuitBreaker,
+        danger: true
+      }
+    ];
+
+    toggleConfigs.forEach(function (cfg) {
+      var row = document.createElement("div");
+      row.className = "guarddog-toggle-row" + (cfg.danger ? " danger-zone" : "");
+      var info = document.createElement("div");
+      info.className = "guarddog-toggle-info";
+      var tTitle = document.createElement("div");
+      tTitle.className = "guarddog-toggle-title";
+      tTitle.textContent = cfg.title;
+      if (cfg.danger) tTitle.style.color = "#ff9d9d";
+      var tDesc = document.createElement("div");
+      tDesc.className = "guarddog-toggle-desc";
+      tDesc.textContent = cfg.desc;
+      info.append(tTitle, tDesc);
+
+      var switchLabel = document.createElement("label");
+      switchLabel.className = "switch";
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = Boolean(cfg.val);
+      input.addEventListener("change", function () {
+        var newVal = input.checked;
+        request("/api/admin/guarddog/toggle", {
+          method: "POST",
+          body: JSON.stringify({ key: cfg.key, value: newVal })
+        }).then(function () {
+          toast("Guarddog: " + cfg.title + " → " + (newVal ? "ON" : "OFF"));
+          renderAdmin();
+        }).catch(function (e) {
+          input.checked = !newVal;
+          setError(e.message);
+        });
+      });
+      var slider = document.createElement("span");
+      slider.className = "slider" + (cfg.danger ? " danger" : "");
+      switchLabel.append(input, slider);
+
+      row.append(info, switchLabel);
+      togglesContainer.append(row);
+    });
+    card.append(togglesContainer);
+
+    var tableTitle = document.createElement("div");
+    tableTitle.style.marginTop = "20px";
+    tableTitle.className = "admin-card-title";
+    tableTitle.textContent = "Actor Watchlist & Penalty Box";
+    var tableSub = document.createElement("div");
+    tableSub.className = "admin-card-sub";
+    tableSub.textContent = "Live telemetry of client actors, request velocities, and active quarantines.";
+    card.append(tableTitle, tableSub);
+
+    var tableWrap = document.createElement("div");
+    tableWrap.className = "guarddog-table-wrap";
+    var table = document.createElement("table");
+    table.className = "guarddog-table";
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Actor</th><th>RPM</th><th>Errors</th><th>Status</th><th>Actions</th></tr>";
+    table.append(thead);
+
+    var tbody = document.createElement("tbody");
+    if (watchlist.length === 0) {
+      var trEmpty = document.createElement("tr");
+      trEmpty.innerHTML = "<td colspan='5' style='text-align:center; color:var(--dim); padding:14px;'>No suspicious or timed-out actors detected.</td>";
+      tbody.append(trEmpty);
+    } else {
+      watchlist.forEach(function (w) {
+        var tr = document.createElement("tr");
+        var tdActor = document.createElement("td");
+        tdActor.textContent = w.actor;
+        var tdRpm = document.createElement("td");
+        tdRpm.textContent = w.rpm + " req/m";
+        var tdErr = document.createElement("td");
+        tdErr.textContent = Math.round(w.errorRate * 100) + "%";
+        var tdStatus = document.createElement("td");
+        var tag = document.createElement("span");
+        tag.className = "status-tag " + w.status;
+        tag.textContent = w.status === "timed_out" ? ("Timed Out (" + Math.ceil(w.expiresIn / 60) + "m)") : "Healthy";
+        tdStatus.append(tag);
+
+        var tdActions = document.createElement("td");
+        if (w.status === "timed_out") {
+          var btnLift = document.createElement("button");
+          btnLift.type = "button";
+          btnLift.className = "btn-action-small";
+          btnLift.textContent = "Lift Timeout";
+          btnLift.addEventListener("click", function () {
+            request("/api/admin/guarddog/lift-timeout", { method: "POST", body: JSON.stringify({ actor: w.actor }) })
+              .then(function () { toast("Lifted timeout for " + w.actor); renderAdmin(); })
+              .catch(function (e) { setError(e.message); });
+          });
+          tdActions.append(btnLift);
+        } else {
+          var btnTimeout = document.createElement("button");
+          btnTimeout.type = "button";
+          btnTimeout.className = "btn-action-small btn-action-danger";
+          btnTimeout.textContent = "Timeout 15m";
+          btnTimeout.addEventListener("click", function () {
+            request("/api/admin/guarddog/timeout", { method: "POST", body: JSON.stringify({ actor: w.actor, minutes: 15, reason: "Manual admin timeout" }) })
+              .then(function () { toast("Put " + w.actor + " in 15m timeout"); renderAdmin(); })
+              .catch(function (e) { setError(e.message); });
+          });
+          tdActions.append(btnTimeout);
+        }
+        tr.append(tdActor, tdRpm, tdErr, tdStatus, tdActions);
+        tbody.append(tr);
+      });
+    }
+    table.append(tbody);
+    tableWrap.append(table);
+    card.append(tableWrap);
+
+    var mForm = document.createElement("div");
+    mForm.className = "guarddog-manual-form";
+    var mInput = document.createElement("input");
+    mInput.className = "guarddog-manual-input";
+    mInput.placeholder = "XPR Actor name (e.g. bobsbot.xpr)";
+    var mSelect = document.createElement("select");
+    mSelect.className = "guarddog-manual-select";
+    mSelect.innerHTML = "<option value='15'>15 minutes</option><option value='60'>1 hour</option><option value='1440'>24 hours</option>";
+    var mBtn = document.createElement("button");
+    mBtn.className = "guarddog-btn-submit";
+    mBtn.type = "button";
+    mBtn.textContent = "Quarantine Actor";
+    mBtn.addEventListener("click", function () {
+      var act = (mInput.value || "").trim();
+      if (!act) { setError("Enter an actor name"); return; }
+      request("/api/admin/guarddog/timeout", {
+        method: "POST",
+        body: JSON.stringify({ actor: act, minutes: Number(mSelect.value), reason: "Manual operator quarantine" })
+      }).then(function () {
+        toast("Quarantined " + act + " for " + mSelect.value + "m");
+        renderAdmin();
+      }).catch(function (e) { setError(e.message); });
+    });
+    mForm.append(mInput, mSelect, mBtn);
+    card.append(mForm);
+
+    var links = document.createElement("div");
+    links.className = "guarddog-links";
+    var l1 = document.createElement("a");
+    l1.className = "guarddog-link-btn";
+    l1.href = "/admin/llms.txt";
+    l1.target = "_blank";
+    l1.textContent = "📄 View Admin & Operator LLM Guide (/admin/llms.txt)";
+    var l2 = document.createElement("a");
+    l2.className = "guarddog-link-btn";
+    l2.href = "/llms.txt";
+    l2.target = "_blank";
+    l2.textContent = "🎧 View User Agent Guide (/llms.txt)";
+    links.append(l1, l2);
+    card.append(links);
+
+    return card;
+  }
+  function renderAdmin() {
+    var grid = $("adminGrid");
+    adminRenderToken++;
+    grid.replaceChildren();
+    if (!state.adminPin) { grid.append(renderGate()); return; }
+    $("lockBtn").hidden = false;
+    var token = adminRenderToken;
+    Promise.all([
+      request("/api/metrics"),
+      request("/api/admin/splits/defaults").catch(function () { return { platform_cut_pct: 0, enabled: false }; }),
+      request("/api/metrics?period=day"),
+      request("/api/admin/guarddog").catch(function () { return { state: {}, metrics: {}, watchlist: [] }; }),
+    ]).then(function (results) {
+      if (token !== adminRenderToken) return;
+      var metrics = results[0], splits = results[1], series = (results[2] || {}).series || [], guardData = results[3];
+
+      // 1) Platform cut
+      var cutCard = adminCard("Platform cut", "The share the platform keeps from each new song (defaults applied at submission).");
+      var cutRow = document.createElement("div");
+      cutRow.className = "admin-cut-row";
+      var pctLabel = document.createElement("label");
+      pctLabel.className = "admin-cut-label";
+      pctLabel.textContent = "Platform %";
+      var pctInput = document.createElement("input");
+      pctInput.type = "number"; pctInput.min = "0"; pctInput.max = "100"; pctInput.step = "1";
+      pctInput.value = splits.platform_cut_pct != null ? splits.platform_cut_pct : 0;
+      pctInput.className = "admin-cut-input";
+      var saveBtn = document.createElement("button");
+      saveBtn.type = "button"; saveBtn.textContent = "Save";
+      saveBtn.addEventListener("click", function () {
+        var v = Math.min(100, Math.max(0, Number(pctInput.value) || 0));
+        request("/api/admin/splits/defaults", { method: "PUT", body: JSON.stringify({ platform_cut_pct: v, enabled: true }) }).then(function (res) {
+          toast("Platform cut saved: " + res.platform_cut_pct + "% (" + (res.enabled ? "enabled" : "disabled") + ")");
+        }).catch(function (e) { setError(e.message); });
+      });
+      cutRow.append(pctLabel, pctInput, saveBtn);
+      cutCard.append(cutRow);
+      grid.append(cutCard);
+
+      // 2) Search + delete
+      var searchCard = adminCard("Songs", metrics.songs.length + " songs · search and remove.");
+      var searchInput = document.createElement("input");
+      searchInput.className = "admin-search-input";
+      searchInput.type = "search";
+      searchInput.placeholder = "Search songs by title or artist…";
+      searchCard.append(searchInput);
+      grid.append(searchCard);
+      var query = "";
+      function renderList() {
+        var rows = searchCard.querySelectorAll(".admin-song-remove");
+        rows.forEach(function (r) { r.remove(); });
+        var filtered = metrics.songs.filter(function (s) {
+          return !query || s.title.toLowerCase().indexOf(query) >= 0 || ((s.artist || "")).toLowerCase().indexOf(query) >= 0;
+        });
+        if (!filtered.length) {
+          var none = document.createElement("div");
+          none.className = "admin-song-none";
+          none.textContent = "No songs match.";
+          searchCard.append(none);
+          return;
+        }
+        filtered.forEach(function (song) {
+          var row = document.createElement("div");
+          row.className = "admin-song-remove";
+          var name = document.createElement("div");
+          name.className = "admin-song-name";
+          name.textContent = song.title + " — " + song.artist;
+          var meta = document.createElement("div");
+          meta.className = "admin-song-meta";
+          meta.textContent = song.plays + " plays · " + song.listeners + " listeners";
+          var del = document.createElement("button");
+          del.className = "admin-reject"; del.type = "button"; del.textContent = "Delete";
+          del.setAttribute("aria-label", "Delete " + song.title);
+          del.addEventListener("click", function () {
+            if (!confirm('Delete "' + song.title + '"? This cannot be undone.')) return;
+            request("/api/admin/songs/remove", { method: "POST", body: JSON.stringify({ song_id: song.song_id }) }).then(function () {
+              toast('Deleted "' + song.title + '"');
+              renderAdmin();
+            }).catch(function (e) { setError(e.message || "Delete failed"); });
+          });
+          var nameWrap = document.createElement("div");
+          nameWrap.append(name, meta);
+          row.append(nameWrap, del);
+          searchCard.append(row);
+        });
+      }
+      searchInput.addEventListener("input", function () { query = searchInput.value.trim().toLowerCase(); renderList(); });
+      renderList();
+
+      // 3) Top songs bar chart
+      var chartCard = adminCard("Top songs by plays", "Most-listened tracks across the catalog.");
+      var chart = document.createElement("div");
+      chart.className = "admin-chart";
+      var top = metrics.songs.slice().sort(function (a, b) { return b.plays - a.plays; }).slice(0, 12);
+      var max = Math.max.apply(null, [1].concat(top.map(function (s) { return s.plays; })));
+      top.forEach(function (song) {
+        var row = document.createElement("div");
+        row.className = "admin-chart-row";
+        var label = document.createElement("span");
+        label.className = "admin-chart-label";
+        label.textContent = song.title.length > 22 ? song.title.slice(0, 22) + "…" : song.title;
+        var track = document.createElement("div");
+        track.className = "admin-chart-track";
+        var bar = document.createElement("div");
+        bar.className = "admin-chart-bar";
+        bar.style.width = ((song.plays / max) * 100) + "%";
+        var val = document.createElement("span");
+        val.className = "admin-chart-val";
+        val.textContent = song.plays;
+        track.append(bar, val);
+        row.append(label, track);
+        chart.append(row);
+      });
+      chartCard.append(chart);
+      grid.append(chartCard);
+
+      // 4) Revenue
+      var rev = metrics.totals || {};
+      var profitCard = adminCard("Revenue", "Accrued spend across the catalog at the current platform cut. Payments are simulated until the contract phase — this is the accrual ledger.");
+      var profitRow = document.createElement("div");
+      profitRow.className = "admin-profit-row";
+      [["Total accrued", rev.accrued_usd || 0], ["Platform cut", rev.platform_usd || 0], ["Artist net", rev.artist_usd || 0]].forEach(function (c) {
+        var cell = document.createElement("div");
+        cell.className = "admin-profit-cell";
+        var l = document.createElement("div");
+        l.className = "admin-profit-label";
+        l.textContent = c[0];
+        var v = document.createElement("div");
+        v.className = "admin-profit-val";
+        v.textContent = "$" + Number(c[1]).toFixed(4);
+        cell.append(l, v);
+        profitRow.append(cell);
+      });
+      profitCard.append(profitRow);
+      var cutNote = document.createElement("div");
+      cutNote.className = "admin-profit-note";
+      cutNote.textContent = "Platform cut: " + (splits.platform_cut_pct != null ? splits.platform_cut_pct : 0) + "% · settled: no · engine: " + (rev.payment_eligible ? "billable" : "all CC");
+      profitCard.append(cutNote);
+      grid.append(profitCard);
+
+      // 5) Listening trend
+      var trendCard = adminCard("Listening trend", "Catalog-wide plays per bucket — day / week / month.");
+      var periodWrap = document.createElement("div");
+      periodWrap.className = "admin-trend-period";
+      [["day", "Day"], ["week", "Week"], ["month", "Month"]].forEach(function (p) {
+        var btn = document.createElement("button");
+        btn.className = "admin-trend-btn"; btn.type = "button"; btn.textContent = p[1];
+        btn.setAttribute("data-period", p[0]);
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".admin-trend-btn").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          request("/api/metrics?period=" + p[0]).then(function (res) { renderTrendChart(trendCard, res.series || []); }).catch(function (e) { setError(e.message); });
+        });
+        periodWrap.append(btn);
+      });
+      periodWrap.querySelector(".admin-trend-btn").classList.add("active");
+      trendCard.append(periodWrap);
+      var trendChart = document.createElement("div");
+      trendChart.className = "admin-chart";
+      trendCard.append(trendChart);
+      renderTrendChart(trendCard, series);
+      grid.append(trendCard);
+
+      // Last card: Guarddog Autonomous Defense (operator/runtime controls)
+      grid.append(renderGuarddogCard(guardData));
+
+    }).catch(function (e) {
+      var empty = document.createElement("div");
+      empty.className = "admin-empty";
+      empty.textContent = e.message || "Metrics unavailable";
+      grid.append(empty);
+    });
+  }
+
+  function renderGate() {
+    $("lockBtn").hidden = true;
+    var gate = document.createElement("div");
+    gate.className = "admin-gate";
+    var h = document.createElement("h2");
+    h.textContent = "Admin access";
+    var p = document.createElement("p");
+    p.textContent = "Enter the admin PIN to open the metrics dashboard.";
+    var input = document.createElement("input");
+    input.type = "password";
+    input.placeholder = "Admin PIN";
+    input.autocomplete = "off";
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Unlock";
+    var err = document.createElement("div");
+    err.className = "err";
+    function submit() {
+      var pin = input.value;
+      if (!pin) { err.textContent = "Enter a PIN"; return; }
+      btn.disabled = true;
+      request("/api/metrics", { headers: { "X-Admin-Pin": pin } }).then(function () {
+        state.adminPin = pin;
+        renderAdmin();
+      }).catch(function (e) {
+        err.textContent = e.message || "Invalid PIN";
+        btn.disabled = false;
+      });
+    }
+    btn.addEventListener("click", submit);
+    gate.append(h, p, input, btn, err);
+    return gate;
+  }
+
+  $("lockBtn").addEventListener("click", function () {
+    state.adminPin = null;
+    renderAdmin();
+  });
+
+  renderAdmin();
+})();
+</script>
+</body>
+</html>
