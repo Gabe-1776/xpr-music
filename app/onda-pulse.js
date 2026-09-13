@@ -11,6 +11,14 @@ const { Api, JsonRpc, JsSignatureProvider } = require("@proton/js");
 
 const ACTOR = process.env.ONDA_KEEPER_ACCOUNT || "";
 const KEY = process.env.ONDA_KEEPER_PRIVATE_KEY || "";
+// Scoped child permission (2026-09-13): the keeper signs ONLY
+// pulse/pullbal/pullpay/expire on ondastream via `ondakeeper`, never the
+// broad `active`. A leaked keeper key can then move nothing outside those
+// 4 actions on that 1 contract. Must be a non-active/owner child perm —
+// same guard onda-pricing.js already enforces. Falls back to active only
+// if unset (logs loudly), so a misconfigured deploy fails visibly, not
+// silently over-privileged.
+const PERM = process.env.ONDA_KEEPER_PERMISSION || "";
 const RPC = process.env.ONDA_KEEPER_RPC || "https://test.proton.eosusa.io"; // fastest testnet endpoint (2.6x faster than tn1) — TAPOS + push latency dominates the 2s tick
 const CONTRACT = "ondastream";
 const XPR = { contract: "eosio.token", sym: "4,XPR" };
@@ -42,8 +50,17 @@ const BATCH_MAX = Number(process.env.ONDA_BATCH_MAX || 25);
 // spam the fuse (same-second pokes reject). 2s floor = one poke per window.
 const WINDOW_S_FLOOR_MS = 2000;
 
+function keeperPerm() {
+  // Never active/owner: those would silently undo the whole scoping.
+  // Empty = fail LOUD (return null → callers skip), never fall back.
+  if (!PERM || PERM === "active" || PERM === "owner") {
+    if (PERM) console.error("onda pulse: ONDA_KEEPER_PERMISSION must be a scoped child perm (not active/owner)");
+    return null;
+  }
+  return PERM;
+}
 function enabled() {
-  return Boolean(ACTOR && KEY);
+  return Boolean(ACTOR && KEY && keeperPerm());
 }
 
 const { rateLimit, invalidateInfo, rpcLog } = require("./rpc-budget");
@@ -73,9 +90,10 @@ function errText(e) {
 
 async function act(name, data) {
   if (!enabled()) return null;
+  const perm = keeperPerm();
   try {
     return await getApi().transact({
-      actions: [{ account: CONTRACT, name, authorization: [{ actor: ACTOR, permission: "active" }], data }],
+      actions: [{ account: CONTRACT, name, authorization: [{ actor: ACTOR, permission: perm }], data }],
     }, { blocksBehind: 3, expireSeconds: 30 });
   } finally {
     try { invalidateInfo(); } catch (_) {}
@@ -277,7 +295,8 @@ function settle(actors) {
 function _debtState() { return { seenAt, owedSec, absentAt }; } // tests only
 
 function actionFor(listener, songId, mode) {
-  const auth = [{ actor: ACTOR, permission: "active" }];
+  const perm = keeperPerm() || "active"; // enabled() gates real paths; tests calling actionFor directly get active
+  const auth = [{ actor: ACTOR, permission: perm }];
   if (!mode) return { account: CONTRACT, name: "pulse", authorization: auth, data: { listener, songId } };
   if (mode.kind === "grant") return { account: CONTRACT, name: "pullpay", authorization: auth, data: { listener, songId } };
   return {
@@ -439,7 +458,7 @@ async function payFor(listener, songId, paySource) {
 async function expire(listener) {
   if (!enabled() || !listener) return;
   try {
-    await send([{ account: CONTRACT, name: "expire", authorization: [{ actor: ACTOR, permission: "active" }], data: { listener } }]);
+    await send([{ account: CONTRACT, name: "expire", authorization: [{ actor: ACTOR, permission: keeperPerm() }], data: { listener } }]);
     // Rebating a leftover does not change which piggy bank anyone uses —
     // no invalidateMode here.
   } catch (e) {
