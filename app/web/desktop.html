@@ -3772,8 +3772,18 @@
               toast("Onda balance is short — add funds in Settings");
               return false;
             }
+            // Pre-sign amount (2026-09-13): startstream locks `quote` of
+            // parked balance for ~bufferSec of playback. State it before
+            // the wallet prompt so the signature is informed, not blind.
+            toast(`Locking ${formatOndaToken(quote / Math.pow(10, (window.ondaChain.ondaTokens.find((t) => t.contract === meta.contract) || { decimals: 4 }).decimals), { code: meta.code || "" })} for ~${bufferSec}s of playback`);
             await window.ondaChain.playFromBalance({ tokenContract: meta.contract, songId: song.id, bufferSec });
           } else {
+            // Pre-sign amount (2026-09-13): wallet-direct transfer of the
+            // quoted buffer. Same informed-signature rule as above.
+            try {
+              const quote = await window.ondaChain.quoteRaw(meta.contract, bufferSec);
+              toast(`Sending ${formatOndaToken(quote / Math.pow(10, (window.ondaChain.ondaTokens.find((t) => t.contract === meta.contract) || { decimals: 4 }).decimals), { code: meta.code || "" })} from wallet for ~${bufferSec}s of playback`);
+            } catch (_) { /* quote display is best-effort — the sign still shows the amount */ }
             await window.ondaChain.playFromWallet({ tokenContract: meta.contract, songId: song.id, bufferSec });
           }
           await refreshOndaState();
@@ -3992,9 +4002,13 @@
         // 2x one pull window, same margin the reference grant script uses —
         // the contract clamps every pull to maxPerTick regardless, so this
         // only matters if the per-token rate rises before the grant expires.
-        const maxPerTickRaw = Math.max(1, Math.round(rate.perSecRaw * windowSec * 2));
-        const budgetRaw = Math.round(budget * Math.pow(10, token.decimals));
-        if (budgetRaw < maxPerTickRaw) { toast(`Budget too small — needs at least ${formatOndaToken(maxPerTickRaw / Math.pow(10, token.decimals), token)}`); return; }
+        const maxPerTick = maxPerTickRaw / Math.pow(10, token.decimals);
+        // Pre-sign confirmation (2026-09-13): the grant signs THREE exact
+        // numbers — budget, per-pull cap, expiry — but the form only showed
+        // budget + days. Show all three before the wallet prompt so the
+        // signature is informed, not blind.
+        const confirmMsg = `Grant Onda pull access?\n\n• Total cap: ${budget} ${token.code} over ${days}d\n• Max per 2s pull: ${maxPerTick} ${token.code}\n• Permission: ondapull (transfer only), expires in ${days}d\n\nYour wallet will ask for updateauth + linkauth + grant.`;
+        if (typeof window.confirm === "function" && !window.confirm(confirmMsg)) return;
         state.ondaGrantBusy = true;
         toast("Approve in your wallet — a Grant request should appear now");
         try {

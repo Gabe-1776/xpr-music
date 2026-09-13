@@ -3021,8 +3021,14 @@
               setStatus("Onda balance is short — add funds in Settings", true);
               return false;
             }
+            // Pre-sign amount (2026-09-13): state it before the wallet prompt.
+            setStatus(`Locking ${formatOndaToken(quote / Math.pow(10, (window.ondaChain.ondaTokens.find((t) => t.contract === meta.contract) || { decimals: 4 }).decimals), { code: meta.code || "" })} for ~${bufferSec}s of playback`);
             await window.ondaChain.playFromBalance({ tokenContract: meta.contract, songId: song.id, bufferSec });
           } else {
+            try {
+              const quote = await window.ondaChain.quoteRaw(meta.contract, bufferSec);
+              setStatus(`Sending ${formatOndaToken(quote / Math.pow(10, (window.ondaChain.ondaTokens.find((t) => t.contract === meta.contract) || { decimals: 4 }).decimals), { code: meta.code || "" })} from wallet for ~${bufferSec}s of playback`);
+            } catch (_) { /* best-effort display */ }
             await window.ondaChain.playFromWallet({ tokenContract: meta.contract, songId: song.id, bufferSec });
           }
           await refreshOndaState();
@@ -3227,9 +3233,10 @@
         // 2x one pull window, same margin the reference grant script uses —
         // the contract clamps every pull to maxPerTick regardless, so this
         // only matters if the per-token rate rises before the grant expires.
-        const maxPerTickRaw = Math.max(1, Math.round(rate.perSecRaw * windowSec * 2));
-        const budgetRaw = Math.round(budget * Math.pow(10, token.decimals));
-        if (budgetRaw < maxPerTickRaw) { setStatus(`Budget too small — needs at least ${formatOndaToken(maxPerTickRaw / Math.pow(10, token.decimals), token)}`, true); return; }
+        const maxPerTick = maxPerTickRaw / Math.pow(10, token.decimals);
+        // Pre-sign confirmation (2026-09-13): show all THREE signed numbers
+        // (budget, per-pull cap, expiry) before the wallet prompt. Same as desktop.
+        if (typeof window.confirm === "function" && !window.confirm(`Grant Onda pull access?\n\n• Total cap: ${budget} ${token.code} over ${days}d\n• Max per 2s pull: ${maxPerTick} ${token.code}\n• Permission: ondapull (transfer only), expires in ${days}d\n\nYour wallet will ask for updateauth + linkauth + grant.`)) return;
         state.ondaGrantBusy = true;
         setStatus("Approve in your wallet — a Grant request should appear now");
         try {
