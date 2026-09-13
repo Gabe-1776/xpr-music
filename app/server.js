@@ -707,7 +707,23 @@ function flushSessionMetrics(sess) {
   const entry = metricsEntry(m, sess.songId);
   const day = dayKey();
   const dEntry = dayEntry(m, day, sess.songId);
-  const listenerKey = sess.metricsScope ? `${sess.metricsScope.kind}:${sess.metricsScope.id}` : `sid:${sess.metricsScopeRaw || "unknown"}`;
+  // (2026-09-13) Listener keys used to embed raw wallet actor names
+  // (`actor:<name>`), so the metrics file was a permanent listening
+  // history per named wallet. Now hashed at write time — new/returning
+  // and per-listener seconds still work, but the file no longer names
+  // anyone. Legacy raw keys are migrated on first flush (one-way).
+  const rawKey = sess.metricsScope ? `${sess.metricsScope.kind}:${sess.metricsScope.id}` : `sid:${sess.metricsScopeRaw || "unknown"}`;
+  const listenerKey = "h:" + crypto.createHash("sha256").update(rawKey).digest("hex").slice(0, 32);
+  for (const bucket of [entry, dEntry]) {
+    if (!bucket.listeners) continue;
+    for (const k of Object.keys(bucket.listeners)) {
+      if (k.startsWith("actor:") || k.startsWith("sid:")) {
+        const hk = "h:" + crypto.createHash("sha256").update(k).digest("hex").slice(0, 32);
+        bucket.listeners[hk] = (bucket.listeners[hk] || 0) + bucket.listeners[k];
+        delete bucket.listeners[k];
+      }
+    }
+  }
   if (seconds >= 0.5) {
     entry.listen_seconds += seconds;
     dEntry.listen_seconds += seconds;
@@ -2579,8 +2595,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Top-up mock: a wallet with WRITE access (self or granted agent) adds
-  // credit to the target account. Testnet mock only — no chain transfer.
-  if (p === "/api/account/topup" && req.method === "POST") {    const header = req.headers["authorization"] || "";
+  // credit to the target account. Mock only — no chain transfer. Gated
+  // behind ONDA_MOCK_TOPUP=true (2026-09-13): an always-on endpoint that
+  // mints off-chain credit for any spend-scoped caller has no place on a
+  // box that also serves real billing. Defaults OFF; testnet sets it
+  // explicitly in keeper.env. When off, the route 404s (not 403) so
+  // probes can't distinguish it from a removed route.
+  const MOCK_TOPUP_ENABLED = process.env.ONDA_MOCK_TOPUP === "true";
+  if (p === "/api/account/topup" && req.method === "POST") {
+    if (!MOCK_TOPUP_ENABLED) return send(res, 404, { error: "not found" });
+    const header = req.headers["authorization"] || "";
     const match = header.match(/^Bearer\s+(\S+)$/i);
     const actor = match ? auth.verifyToken(match[1]) : null;
     if (!actor) return send(res, 401, { error: "wallet login required" });

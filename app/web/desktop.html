@@ -2183,14 +2183,33 @@
           // Validate the PIN against the server before unlocking.
           await request("/api/metrics", { headers: { "X-Admin-Pin": pin } });
           state.adminPin = pin;
+          // (2026-09-13) Never leave the PIN in the DOM: clear the input
+          // the moment it validates, so devtools/extensions can't read it
+          // back from the element afterwards.
+          $("adminPinInput").value = "";
+          // PIN auto-expires after 15 min idle — re-unlock re-validates.
+          // Long-lived page sessions used to hold it forever.
+          if (state.adminPinTimer) clearTimeout(state.adminPinTimer);
+          state.adminPinTimer = setTimeout(() => {
+            state.adminPin = null;
+            toast("Admin session expired — unlock again to continue");
+            renderAll();
+          }, 15 * 60 * 1000);
           $("adminLoginDialog").close();
           showView("admin");
           renderAll();
-          toast("Admin unlocked");
+          toast("Admin unlocked (expires after 15 min idle)");
         } catch (error) {
           $("adminLoginError").textContent = error.message || "Invalid PIN";
           $("adminLoginError").hidden = false;
         }
+      }
+      function lockAdmin() {
+        if (state.adminPinTimer) clearTimeout(state.adminPinTimer);
+        state.adminPinTimer = null;
+        state.adminPin = null;
+        toast("Admin locked");
+        renderAll();
       }
       async function loadPlaylists() {
         const data = await request("/api/playlists");
@@ -4036,7 +4055,10 @@
         state.ondaGrantBusy = true;
         try {
           await window.ondaChain.ondaRevoke();
-          toast("Revoked — Onda's own code will stop pulling");
+          // (2026-09-13) Name the limit inline: soft revoke stops OUR pulls
+          // but the on-chain permission stays live. The unlinkauth button
+          // right below is the real backstop.
+          toast("Soft-revoked — Onda's own code will stop pulling, but the on-chain permission stays live until you unlink it below");
           await refreshOndaFive();
         } catch (err) {
           if (window.ondaChain.isCancel(err)) toast("Revoke cancelled");
@@ -4698,7 +4720,7 @@
             const revoke = document.createElement("button");
             revoke.className = "admin-reject";
             revoke.type = "button";
-            revoke.textContent = "Revoke";
+            revoke.textContent = "Unlink agent";
             revoke.addEventListener("click", async () => {
               try {
                 await request(`/api/grants/${g.id}/revoke`, { method: "POST" });

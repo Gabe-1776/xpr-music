@@ -4408,6 +4408,7 @@
         }
       });
       let adminPin = "";
+      let adminPinTimer = null;
       function openAdminDashboard() {
         closeDropdowns();
         closeNowPlaying();
@@ -4527,6 +4528,16 @@
         event.preventDefault();
         adminPin = els.adminPinInput.value.trim();
         if (!adminPin) return;
+        // (2026-09-13) Clear the input on unlock + expire after 15 min,
+        // same as desktop. Mobile previously held the PIN forever.
+        els.adminPinInput.value = "";
+        if (adminPinTimer) clearTimeout(adminPinTimer);
+        adminPinTimer = setTimeout(() => {
+          adminPin = "";
+          els.adminLock.hidden = false;
+          els.adminContent.hidden = true;
+          setStatus("Admin session expired — unlock again to continue", true);
+        }, 15 * 60 * 1000);
         els.adminLock.hidden = true;
         els.adminContent.hidden = false;
         renderAdminSubmissions();
