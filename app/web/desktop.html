@@ -1499,10 +1499,14 @@
       .card-grid .song-card { flex-basis: calc((100% - 2 * 13px) / 3); min-width: 125px; }
     }
   </style>
-  <!-- Wallet login: MailSigil path — esm.sh @proton/web-sdk@4 + @proton/link@3
-       loaded on click by /web/xpr-login.js. Do not go back to unpkg v5; the
-       v5 overlay + no-proof WebAuth return is what broke both players. -->
-  <script src="/web/xpr-login.js?v=8"></script>
+  <!-- Wallet login: MailSigil path — vendored @proton/web-sdk 4.4.2 + @proton/link 3.2.4
+       UMD bundles (window.ProtonWebSDK), consumed on click by /web/xpr-login.js.
+       Vendored 2026-09-13: esm.sh CDN with no SRI owned every login + money
+       signature. Do not go back to unpkg v5; the v5 overlay + no-proof
+       WebAuth return is what broke both players. -->
+  <script src="/web/vendor/proton-link-3.2.4.bundle.js"></script>
+  <script src="/web/vendor/proton-web-sdk-4.4.2.bundle.js"></script>
+  <script src="/web/xpr-login.js?v=9"></script>
 </head>
 <body>
   <div class="app">

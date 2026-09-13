@@ -6,9 +6,17 @@
 // nonce sign. Burned proofs fall through to nonce. A dead restored session
 // (transact hang / unknown credential) purges SDK storage and reconnects.
 (function (global) {
-  const SDK_V4 = "https://esm.sh/@proton/web-sdk@4";
-  const LINK_V3 = "https://esm.sh/@proton/link@3";
-  const GREYMASS = "https://esm.sh/@greymass/eosio";
+  // Vendored wallet SDK (2026-09-13, no-CDN fix): the SDK + link bundles
+  // used to load from esm.sh on every visit with no SRI or version pin, so
+  // a CDN/DNS compromise owned every login + money signature. Now served
+  // from our own /web/vendor/ (pinned versions, sha256 in
+  // docs/production-pin.md). The .bundle.js files are UMD globals loaded
+  // via <script> tags in desktop.html/mobile.html.
+  // NOTE: the @greymass/eosio ESM import that used to live here is gone
+  // too — its .m.js has bare npm imports (brorand, bn.js, …) that browsers
+  // cannot resolve without a bundler; esm.sh was silently resolving them.
+  // txHex() below never needed it: @proton/link results already carry
+  // resolved.serializedTransaction, which is what the fallbacks use.
   const LOGIN_CONTRACT = "sigillogin";
   let sdkPromise = null;
 
@@ -19,7 +27,11 @@
 
   function loadSdk() {
     if (!sdkPromise) {
-      sdkPromise = Promise.all([import(SDK_V4), import(LINK_V3)]).then(([mod]) => mod.default);
+      sdkPromise = Promise.resolve().then(() => {
+        const SDK = global.ProtonWebSDK;
+        if (typeof SDK !== "function") throw new Error("Wallet SDK failed to load (vendored bundle missing)");
+        return SDK;
+      });
     }
     return sdkPromise;
   }
@@ -62,13 +74,10 @@
   }
 
   async function txHex(signed) {
-    if (signed && signed.transaction) {
-      try {
-        const { Serializer } = await import(GREYMASS);
-        const hex = Serializer.encode({ object: signed.transaction }).hexString;
-        if (hex) return hex;
-      } catch (_) {}
-    }
+    // NOTE (2026-09-13): the @greymass/eosio Serializer.encode path that
+    // used to sit here is gone with the esm.sh removal — its ESM has bare
+    // npm imports browsers can't resolve. @proton/link results always carry
+    // resolved.serializedTransaction, which is what these fallbacks read.
     const raw = signed && (signed.resolved && signed.resolved.serializedTransaction
       ? signed.resolved.serializedTransaction
       : signed.serializedTransaction);
