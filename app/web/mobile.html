@@ -5035,33 +5035,43 @@
         els.webauthButton.setAttribute("title", connected ? `Logout (${state.wallet.actor})` : "WebAuth login");
       }
       async function restoreWalletSession() {
-        let saved = null;
-        try { saved = readLocal("xpr_music_wallet"); } catch (_) { saved = null; }
-        if (!saved) { updateWalletUI(); return; }
+        // Memory-only bearer (2026-09-13): the token used to persist in
+        // localStorage as xpr_music_wallet JSON, so any XSS stole a
+        // long-lived API credential. Now it lives in state.wallet.token
+        // only (this page load). Returning visits re-auth silently via
+        // the kept wallet pairing + one sigillogin signature. Legacy
+        // persisted wallets are wiped on sight (one-way migration).
+        try { writeLocal("xpr_music_wallet", ""); } catch (_) {}
+        if (typeof window.ondaWalletLogin !== "function") { updateWalletUI(); return; }
+        // Only attempt when a wallet pairing exists — otherwise this would
+        // pop a wallet-connect prompt on every cold visit for users who
+        // never logged in.
+        let hasPairing = false;
         try {
-          const w = JSON.parse(saved);
-          // Ungated sessions stored {connected, actor} with no token. That
-          // painted "Logout" while play still 401'd after re-gate.
-          if (!w || !w.token) {
-            writeLocal("xpr_music_wallet", "");
-            state.wallet = { connected: false, actor: null, network: null, token: null };
-            updateWalletUI();
-            return;
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && (k.startsWith("proton-storage") || k.startsWith("proton-link"))) { hasPairing = true; break; }
           }
-          state.wallet = { connected: false, actor: null, network: w.network || "testnet", token: w.token };
-          const me = await request("/api/auth/me");
-          state.wallet = { connected: true, actor: me.actor, network: w.network || "testnet", token: w.token };
-          writeLocal("xpr_music_wallet", JSON.stringify(state.wallet));
+        } catch (_) {}
+        if (!hasPairing) { updateWalletUI(); return; }
+        try {
+          const net = NETWORKS[state.wallet.network || "testnet"] || NETWORKS.testnet;
+          const data = await window.ondaWalletLogin({
+            chainId: net.chainId,
+            endpoints: net.endpoints,
+            requestAccount: "ondastream",
+            appName: "Onda",
+            request,
+            onStatus: () => {},
+          });
+          if (!data.token) { updateWalletUI(); return; }
+          state.wallet = { connected: true, actor: data.actor, network: state.wallet.network || "testnet", token: data.token };
           loadPayPrefs();
           configureOndaChain();
           void refreshOndaState();
-          // Refresh pay_mode (grant/balance/none) BEFORE the user can reach
-          // play, so a login-then-immediate-play never falls through to the
-          // legacy lock flow on stale "none" data (BLUEPRINT-pay-modes.md).
           try { await pollServer(); } catch (_) {}
         } catch (_) {
           state.wallet = { connected: false, actor: null, network: null, token: null };
-          writeLocal("xpr_music_wallet", "");
         }
         updateWalletUI();
       }
@@ -5103,10 +5113,9 @@
             onStatus: (msg) => setStatus(msg),
           });
           if (!data.token) throw new Error("verification failed");
-          state.wallet = { connected: true, actor: data.actor, network, token: data.token };
+          state.wallet = { connected: true, actor: data.actor, network, token: data.token }; // memory only — never localStorage (2026-09-13)
           updateWalletUI();
           setStatus(`Connected: ${data.actor}`);
-          try { writeLocal("xpr_music_wallet", JSON.stringify(state.wallet)); } catch (_) {}
           loadPayPrefs();
           configureOndaChain();
           void refreshOndaState();
@@ -5121,7 +5130,7 @@
       }
       function logoutWallet() {
         state.wallet = { connected: false, actor: null, network: null, token: null };
-        writeLocal("xpr_music_wallet", "");
+        try { writeLocal("xpr_music_wallet", ""); } catch (_) {} // wipe legacy persisted token
         // On-chain state is actor-scoped — never let the previous identity's
         // lock/balances survive into the guest or another account.
         state.ondaLock = null;
@@ -5131,13 +5140,13 @@
         state.artistAlbums = [];
         state.artistProfile = null;
         // The proton-link/proton-storage pairing is deliberately KEPT — same
-        // reasoning as desktop.html's walletLogout. xpr_music_wallet holds the
-        // bearer token and IS the authorisation, so it is cleared above; the
-        // pairing only lets the app ASK the wallet to sign, which the wallet
-        // still has to approve. Purging it forced connect + sign (two prompts)
-        // on every return trip because xpr-login.js's silent restoreSession
-        // had nothing to restore. forgetWalletPairing() is the explicit path.
-        els.webauthPicker.hidden = true;
+        // reasoning as desktop.html's walletLogout. state.wallet.token holds
+        // the bearer token (memory-only since 2026-09-13) and IS the
+        // authorisation, so it is cleared above; the pairing only lets the
+        // app ASK the wallet to sign, which the wallet still has to approve.
+        // Purging it forced connect + sign (two prompts) on every return
+        // trip because xpr-login.js's silent restoreSession had nothing to
+        // restore. forgetWalletPairing() is the explicit path.
         els.webauthButton.setAttribute("aria-expanded", "false");
         setStatus("Logged out");
         updateWalletUI();

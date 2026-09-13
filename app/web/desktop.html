@@ -1953,26 +1953,51 @@
         if (state.view === "artist") await loadArtistDashboard();
       }
       async function restoreWalletSession() {
-        const token = localRead("xpr_music_wallet_token");
-        if (!token) return;
-        // Set BEFORE the authed request — request() attaches the Bearer
-        // header from state.walletToken, so a late assignment would send
-        // an unauthenticated /api/auth/me and clear a valid session.
-        state.walletToken = token;
+        // Memory-only bearer (2026-09-13): the 7-day token used to persist
+        // in localStorage, so any XSS stole a long-lived API credential.
+        // Now it lives in state.walletToken only (this page load). A
+        // returning visit re-auths silently: the kept wallet pairing lets
+        // restoreSession reconnect with no prompt, and one sigillogin
+        // signature mints a fresh token — same UX, nothing stealable at rest.
+        // Legacy persisted tokens are wiped on sight (one-way migration).
+        try { localWrite("xpr_music_wallet_token", ""); } catch (_) {}
+        if (typeof window.ondaWalletLogin !== "function") return;
+        // Only attempt when a wallet pairing exists — otherwise this would
+        // pop a wallet-connect prompt on every cold visit for users who
+        // never logged in.
+        let hasPairing = false;
         try {
-          const me = await request("/api/auth/me");
-          state.actor = me.actor;
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && (k.startsWith("proton-storage") || k.startsWith("proton-link"))) { hasPairing = true; break; }
+          }
+        } catch (_) {}
+        if (!hasPairing) return;
+        try {
+          const net = WALLET_NETWORKS[state.walletNetwork];
+          if (!net) return;
+          const data = await window.ondaWalletLogin({
+            chainId: net.chainId,
+            endpoints: net.endpoints,
+            requestAccount: WALLET_REQUEST_ACCOUNT,
+            appName: WALLET_APP_NAME,
+            request,
+            onStatus: () => {},
+          });
+          if (!data.token) return;
+          state.actor = data.actor;
+          state.walletToken = data.token;
           loadPayPrefs();
           configureOndaChain();
           updateWalletUI();
           await refreshWalletScopedState();
           void refreshOndaState();
-          toast(`Signed in as ${me.actor}`);
+          toast(`Signed in as ${data.actor}`);
         } catch (_) {
-          // Stale/expired token — discard quietly.
+          // No pairing / wallet unreachable / user cancelled — stay signed
+          // out quietly. The login button is right there.
           state.actor = null;
           state.walletToken = null;
-          localWrite("xpr_music_wallet_token", "");
           updateWalletUI();
         }
       }
@@ -1998,8 +2023,7 @@
           });
           if (!data.token) throw new Error("verification failed");
           state.actor = data.actor;
-          state.walletToken = data.token;
-          localWrite("xpr_music_wallet_token", data.token);
+          state.walletToken = data.token; // memory only — never localStorage (2026-09-13)
           loadPayPrefs();
           configureOndaChain();
           updateWalletUI();
@@ -2016,7 +2040,7 @@
       function walletLogout() {
         state.actor = null;
         state.walletToken = null;
-        localWrite("xpr_music_wallet_token", "");
+        try { localWrite("xpr_music_wallet_token", ""); } catch (_) {} // wipe legacy persisted token
         // On-chain state is actor-scoped — never let the previous identity's
         // lock/balances survive into the guest or another account.
         state.ondaLock = null;
@@ -2031,10 +2055,10 @@
         state.agentLookup = null;
         state.pendingView = null;
         // The proton-link/proton-storage pairing is deliberately KEPT. Two
-        // different credentials live in localStorage and only one of them is
-        // an authorisation:
-        //   xpr_music_wallet_token — Onda's bearer token, grants API access on
-        //     its own. Cleared above. This is the security boundary.
+        // different credentials exist and only one of them is an authorisation:
+        //   state.walletToken — Onda's bearer token, grants API access on its
+        //     own. Memory-only since 2026-09-13 (never localStorage — an XSS
+        //     stole it at rest). Cleared above. This is the security boundary.
         //   proton-link / proton-storage — the wallet PAIRING. It only lets the
         //     app ASK the wallet for a signature; the wallet still has to
         //     approve (passkey/biometric on WebAuth). Asking is not authorising.
