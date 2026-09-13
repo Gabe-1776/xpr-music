@@ -1,7 +1,7 @@
 # Production pin — music.project-testing.xyz
 
 **Pinned:** 2026-09-04 — Top Up & Direct Wallet verified; partial withdrawal (`withdrawamt`); idle watchdog; Guarddog defense; live code review ready
-**Updated:** 2026-09-13 — wallet SDK vendored locally (no more esm.sh CDN); greymass ESM import dropped (bare npm imports unresolvable in browsers; txHex fallbacks cover it)
+**Updated:** 2026-09-13 — wallet SDK vendored locally (no more esm.sh CDN); greymass ESM import dropped (bare npm imports unresolvable in browsers; txHex fallbacks cover it). Bearer token memory-only + silent wallet re-auth (no more localStorage persistence).
 **Git:** `https://github.com/Gabe-1776/xpr-music` — `main`  
 **Host:** Hetzner `<DEPLOY_HOST_IP>` `/opt/xpr-music` (`xpr-music.service`)  
 **URL:** https://music.project-testing.xyz  
@@ -18,8 +18,8 @@ This `main` branch is a snapshot of **what is running on production/testnet**.
 | `app/auth.js` | `0c6412c7ebdb206e400a711a2bdf486d92b8fa84674b506999753e896f7337fc` |
 | `app/onda-pulse.js` | `4eccc324660844117f4f40e5e2d8e12cec0e0ea90e9a21a43563246acdf2f5a2` |
 | `app/onda-pricing.js` | `87a11a2ee3bf5d90fd5bc3719d9db336ef5bb8a059f907c2e2038f19f600bda9` |
-| `app/web/desktop.html` | `d0f719c168b4310ff0d7c8c75a541b750354bb819f7c13608156c7e381ed71f5` |
-| `app/web/mobile.html` | `12029642f2ef325e604606d4fdc305bbd5c8dd3dc56d452e7824c2c6fce7403d` |
+| `app/web/desktop.html` | `1959b592844dfd49d91549d8d2928f46fdd602ff2c672c348f9f5f9af25f9611` |
+| `app/web/mobile.html` | `334cf5b1535920f3156801099f93af7671b91cd32f8f0c33c7e0cac0e929724e` |
 | `app/web/xpr-login.js` | `956415947a3d6aa840da3a9e13adb5d668c62dbae7114b6a525735b91f42dd63` |
 | `app/web/vendor/proton-web-sdk-4.4.2.bundle.js` | `be7a1f83e84f2286c666b7bf91701aed194ed62f18de8aeb00bfa7236b193da9` |
 | `app/web/vendor/proton-link-3.2.4.bundle.js` | `6e985bb877d24804dd2d03522328f8ad6dd290061b92e6fc9d34e37f08523188` |
