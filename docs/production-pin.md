@@ -1,7 +1,7 @@
 # Production pin — music.project-testing.xyz
 
 **Pinned:** 2026-09-04 — Top Up & Direct Wallet verified; partial withdrawal (`withdrawamt`); idle watchdog; Guarddog defense; live code review ready
-**Updated:** 2026-09-13 — wallet SDK vendored locally (no more esm.sh CDN); greymass ESM import dropped. Bearer token memory-only + silent wallet re-auth. Exact signed amounts shown before grant/play wallet prompts.
+**Updated:** 2026-09-13 — wallet SDK vendored locally (no more esm.sh CDN); greymass ESM import dropped. Bearer token memory-only + silent wallet re-auth. Exact signed amounts shown before grant/play wallet prompts. Grant timeout reconciles late wallet approvals against the on-chain row.
 **Git:** `https://github.com/Gabe-1776/xpr-music` — `main`  
 **Host:** Hetzner `<DEPLOY_HOST_IP>` `/opt/xpr-music` (`xpr-music.service`)  
 **URL:** https://music.project-testing.xyz  
@@ -18,9 +18,9 @@ This `main` branch is a snapshot of **what is running on production/testnet**.
 | `app/auth.js` | `0c6412c7ebdb206e400a711a2bdf486d92b8fa84674b506999753e896f7337fc` |
 | `app/onda-pulse.js` | `4eccc324660844117f4f40e5e2d8e12cec0e0ea90e9a21a43563246acdf2f5a2` |
 | `app/onda-pricing.js` | `87a11a2ee3bf5d90fd5bc3719d9db336ef5bb8a059f907c2e2038f19f600bda9` |
-| `app/web/desktop.html` | `e45f19412d08b27007b4c86348508a70bd66b6d91c913e15fac444cb081264c1` |
-| `app/web/mobile.html` | `4cc9c92cd47b440777947feb8be58019f14a01169a9bb5fd5778c8747724742c` |
-| `app/web/xpr-login.js` | `956415947a3d6aa840da3a9e13adb5d668c62dbae7114b6a525735b91f42dd63` |
+| `app/web/desktop.html` | `9878d518e131784cd156ee653d830a3752ea64a8f3fe680580f61a3ad18f4066` |
+| `app/web/mobile.html` | `c931128972f9f099c97f80a122d94041c78a44afa88ea321ba93089116b78157` |
+| `app/web/xpr-login.js` | `00669d6135edb9adc07a710d9a6e4dfd59b1f8b1bf41efbfecd15b348db74283` |
 | `app/web/vendor/proton-web-sdk-4.4.2.bundle.js` | `be7a1f83e84f2286c666b7bf91701aed194ed62f18de8aeb00bfa7236b193da9` |
 | `app/web/vendor/proton-link-3.2.4.bundle.js` | `6e985bb877d24804dd2d03522328f8ad6dd290061b92e6fc9d34e37f08523188` |
 | `app/web/admin.html` | `02bfa31d22fffcb6ced2e15ef95141e13561b348e4cb8ce79418d595a9372bcd` |
