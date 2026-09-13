@@ -4013,10 +4013,14 @@
         toast("Approve in your wallet — a Grant request should appear now");
         try {
           const granted = await window.ondaChain.ondaGrant({ tokenId: token.id, actor: state.actor, budgetRaw, maxPerTickRaw, days });
+          // Late approval (2026-09-13): the wallet prompt outlived our
+          // 40s timeout and the grant landed anyway. Say so explicitly —
+          // the old code reported failure while the permission existed.
+          const latePrefix = granted && granted.lateApproval ? "Granted after all (approved after our timeout) — " : "";
           if (granted && granted.needLink) {
-            toast("Grant saved — approve the second prompt to let pulls leave this wallet. If nothing opens, phone WebAuth is hiding it: use Top Up.");
+            toast(latePrefix + "Grant saved — approve the second prompt to let pulls leave this wallet. If nothing opens, phone WebAuth is hiding it: use Top Up.");
           } else {
-            toast(`Granted — Onda may now pull up to ${formatOndaToken(budget, token)} from your wallet over ${days}d`);
+            toast(latePrefix + `Granted — Onda may now pull up to ${formatOndaToken(budget, token)} from your wallet over ${days}d`);
           }
           await refreshOndaFive();
         } catch (err) {

@@ -981,19 +981,51 @@
       return actions;
     };
 
+    // The wallet request cannot be cancelled from here (no SDK cancel API),
+    // so a timeout does NOT mean the prompt is gone: a late approval still
+    // installs updateauth+linkauth+grant. The old code reported failure and
+    // moved on, leaving the user unaware the permission now exists
+    // (2026-09-13). Fix: on timeout, read the on-chain grant row before
+    // giving up — if the late approval landed, return success with
+    // lateApproval:true so the UI says "granted after all" instead of
+    // "failed", and the linkauth step below still runs to finish the job.
     const GRANT_TIMEOUT_MS = 40000;
-    const tx = await Promise.race([
-      signAction(build),
-      new Promise(function (_, reject) {
-        setTimeout(function () {
-          reject(Object.assign(new Error("Wallet never showed the request. Phone WebAuth hides permission changes — use Top Up, or WebAuth desktop → Browser / Anchor."), { code: "E_GRANT_TIMEOUT" }));
-        }, GRANT_TIMEOUT_MS);
-      }),
-    ]);
+    let tx = null;
+    let lateApproval = false;
+    try {
+      tx = await Promise.race([
+        signAction(build),
+        new Promise(function (_, reject) {
+          setTimeout(function () {
+            reject(Object.assign(new Error("__grant_timeout__"), { code: "E_GRANT_TIMEOUT_PENDING" }));
+          }, GRANT_TIMEOUT_MS);
+        }),
+      ]);
+    } catch (err) {
+      if (!err || err.code !== "E_GRANT_TIMEOUT_PENDING") throw err;
+      // Ambiguous: the prompt may still be live in the wallet. Poll the
+      // chain briefly — a late approval writes the grant row, which is
+      // authoritative regardless of what our local race did.
+      let landed = null;
+      for (let i = 0; i < 4; i++) {
+        await new Promise(function (r) { setTimeout(r, 5000); });
+        try {
+          const g = await getOndaGrant(actor);
+          if (g && Number(g.budgetRaw) === budgetRaw && Number(g.expiresAt) === expiresAt) { landed = g; break; }
+        } catch (_) { /* RPC blip — keep polling */ }
+      }
+      if (!landed) {
+        throw Object.assign(new Error("Wallet never showed the request. Phone WebAuth hides permission changes — use Top Up, or WebAuth desktop → Browser / Anchor. (No grant was recorded on-chain.)"), { code: "E_GRANT_TIMEOUT" });
+      }
+      lateApproval = true;
+    }
     // Grant row is on-chain. pullpay still needs eosio.token::transfer linked
     // to ondapull. That is a second, tiny prompt — do NOT bundle it with
     // updateauth or WebAuth hides everything. Ignore "already linked".
     let needLink = false;
+    // A late approval may have installed the grant but the link step below
+    // runs against the CURRENT account links anyway, so no special-casing:
+    // if the late prompt also linked, this no-ops as "already linked".
     try {
       await Promise.race([
         signAction(function (session) {
@@ -1014,7 +1046,7 @@
       const msg = String((err && err.message) || err || "");
       if (!/already linked|already exist/i.test(msg)) needLink = true;
     }
-    return { tx: tx, token: token, maxPerTickRaw: maxPerTickRaw, budgetRaw: budgetRaw, expiresAt: expiresAt, permissionSetup: !ondaReady, needLink: needLink };
+    return { tx: tx, token: token, maxPerTickRaw: maxPerTickRaw, budgetRaw: budgetRaw, expiresAt: expiresAt, permissionSetup: !ondaReady, needLink: needLink, lateApproval: lateApproval };
   }
 
   /** Soft revoke — stops OUR pulls immediately, but is only as honest as our

@@ -3241,10 +3241,11 @@
         setStatus("Approve in your wallet — a Grant request should appear now");
         try {
           const granted = await window.ondaChain.ondaGrant({ tokenId: token.id, actor: state.wallet.actor, budgetRaw, maxPerTickRaw, days });
+          const latePrefix = granted && granted.lateApproval ? "Granted after all (approved after our timeout) — " : "";
           if (granted && granted.needLink) {
-            setStatus("Grant saved — approve the second prompt to let pulls leave this wallet. If nothing opens, phone WebAuth is hiding it: use Top Up.", true);
+            setStatus(latePrefix + "Grant saved — approve the second prompt to let pulls leave this wallet. If nothing opens, phone WebAuth is hiding it: use Top Up.", true);
           } else {
-            setStatus(`Granted — Onda may now pull up to ${formatOndaToken(budget, token)} from your wallet over ${days}d`);
+            setStatus(latePrefix + `Granted — Onda may now pull up to ${formatOndaToken(budget, token)} from your wallet over ${days}d`);
           }
           await refreshOndaFive();
         } catch (err) {
